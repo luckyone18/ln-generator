@@ -147,6 +147,7 @@ export default function Page() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [selected, setSelected] = useState(() => new Set());
+  const [kressOpt, setKressOpt] = useState(""); // "" = acak (3-6)
 
   function onChange(e) {
     setRaw(e.target.value.replace(/[^\d\n\r]/g, ""));
@@ -181,7 +182,7 @@ export default function Page() {
     setBusy(true);
     // Brief delay for the "analysis" UX, then compute deterministically.
     setTimeout(() => {
-      const r = generate(raw);
+      const r = generate(raw, kressOpt === "" ? null : Number(kressOpt));
       setBusy(false);
       if (r.error) {
         alert(r.error);
@@ -208,6 +209,7 @@ export default function Page() {
     setRaw("");
     setResult(null);
     setSelected(new Set());
+    setKressOpt("");
     setBusy(false);
   }
 
@@ -234,6 +236,24 @@ export default function Page() {
           placeholder="Masukkan Result"
           className="inputArea"
         />
+        <div className="optRow">
+          <label className="optLabel" htmlFor="kressOpt">
+            Jumlah Digit Kress Ai:
+          </label>
+          <select
+            id="kressOpt"
+            className="optSelect"
+            value={kressOpt}
+            onChange={(e) => setKressOpt(e.target.value)}
+          >
+            <option value="">Acak (3–6)</option>
+            <option value="3">3 digit</option>
+            <option value="4">4 digit</option>
+            <option value="5">5 digit</option>
+            <option value="6">6 digit</option>
+            <option value="7">7 digit</option>
+          </select>
+        </div>
         <div className="btnRow">
           <button
             type="button"

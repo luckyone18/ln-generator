@@ -80,6 +80,28 @@ check("parseInput(null) -> null", parseInput(null) === null);
 const distinct = new Set(["1234", "5678", "9012", "4444", "7777"].map((s) => sig2(generate(s))));
 check("5 distinct inputs give >= 4 distinct outputs", distinct.size >= 4, `(got ${distinct.size})`);
 
+// Kress count option (3-7)
+console.log("Kress digit count option:");
+for (const want of [3, 4, 5, 6, 7]) {
+  const r = generate("1234", want);
+  const kd = r.kress.split(" ").map(Number);
+  check(
+    `kress fixed ${want} digit`,
+    kd.length === want && new Set(kd).size === want,
+    `(got "${r.kress}")`
+  );
+  const all = [r.top, r.p1, r.p2, r.p3, r.p4, r.px].flat();
+  check(`  partition still 100 (kress=${want})`, all.length === 100 && new Set(all).size === 100);
+  const r2 = generate("1234", want);
+  check(`  deterministic (kress=${want})`, r.kress === r2.kress && JSON.stringify(r.top) === JSON.stringify(r2.top));
+}
+// out-of-range clamps
+check("kress 1 -> clamp ke 3", generate("1234", 1).kress.split(" ").length === 3);
+check("kress 99 -> clamp ke 7", generate("1234", 99).kress.split(" ").length === 7);
+// null/undefined = acak 3-6
+const acak = generate("1234");
+check("kress acak 3-6", acak.kress.split(" ").length >= 3 && acak.kress.split(" ").length <= 6);
+
 function sig2(r) {
   return JSON.stringify([r.kress, r.top, r.p1, r.p2, r.p3, r.p4, r.px]);
 }

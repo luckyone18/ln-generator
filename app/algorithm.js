@@ -53,8 +53,9 @@ export function shuffled(arr, rng) {
 }
 
 // Build the partition from the 4-digit input.
+// kressWanted: optional fixed number of Kress digits (3-7). null = acak (3-6).
 // Guarantees: top+p1+p2+p3+p4+px = 100, no duplicates, all "00".."99".
-export function generate(raw) {
+export function generate(raw, kressWanted = null) {
   const parsed = parseInput(raw);
   if (!parsed) return { error: "Masukkan result yang valid" };
 
@@ -64,9 +65,10 @@ export function generate(raw) {
   const seed = (((a * 33 + b) * 33 + c) * 33 + d) ^ 0x9e3779b9;
   const rng = mulberry32(seed);
 
-  // 2. Kress: 3-6 distinct digits mixed from the input digits and
-  //    small arithmetic offsets, shuffled by the same seeded RNG.
-  const pool = Array.from(
+  // 2. Kress digits: mixed from the input digits and small arithmetic
+  //    offsets. If a fixed count is requested, deterministically extend
+  //    the candidate pool until it has enough distinct digits.
+  const poolArr = Array.from(
     new Set([
       a,
       b,
@@ -80,9 +82,33 @@ export function generate(raw) {
       (d + 1) % 10,
     ])
   );
-  const shuffledPool = shuffled(pool, rng);
-  const kressCount = 3 + Math.floor(rng() * 4); // 3..6
-  const kressDigits = shuffledPool.slice(0, kressCount).sort((x, y) => x - y);
+
+  let kressFixed = null;
+  if (kressWanted != null && Number.isFinite(Number(kressWanted))) {
+    kressFixed = Math.max(3, Math.min(7, Math.floor(Number(kressWanted))));
+  }
+
+  if (kressFixed != null) {
+    let guard = 0;
+    while (poolArr.length < kressFixed && guard < 20) {
+      let cand = (poolArr[poolArr.length - 1] * 7 + 3) % 10;
+      let g2 = 0;
+      while (poolArr.includes(cand) && g2 < 10) {
+        cand = (cand + 1) % 10;
+        g2++;
+      }
+      if (poolArr.includes(cand)) break;
+      poolArr.push(cand);
+      guard++;
+    }
+  }
+
+  const shuffledPool = shuffled(poolArr, rng);
+  const kressCount =
+    kressFixed != null ? kressFixed : 3 + Math.floor(rng() * 4); // acak: 3..6
+  const kressDigits = shuffledPool
+    .slice(0, Math.min(kressCount, shuffledPool.length))
+    .sort((x, y) => x - y);
   const kress = kressDigits.map((x) => String(x)).join(" ");
 
   // 3. Split sizes N1..N6. Constraints: total = 100, TOP 30-50,
