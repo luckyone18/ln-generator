@@ -7,19 +7,27 @@ const ALL_PAIRS = Array.from({ length: 100 }, (_, i) =>
   String(i).padStart(2, "0")
 );
 
-function Grid({ top, p1, p2, p3, p4, px }) {
+function Grid({ top, p1, p2, p3, p4, px, selected, onToggle }) {
   const topSet = new Set(top);
   const patahSet = new Set([...p1, ...p2, ...p3, ...p4, ...px]);
 
   return (
     <div className="gridWrap">
       {ALL_PAIRS.map((n) => {
+        const inResult = topSet.has(n) || patahSet.has(n);
         const cls =
           "cell" +
           (topSet.has(n) ? " cellTop" : "") +
-          (patahSet.has(n) ? " cellPatah" : "");
+          (patahSet.has(n) ? " cellPatah" : "") +
+          (selected.has(n) ? " cellSel" : "") +
+          (inResult ? " cellPick" : "");
         return (
-          <div key={n} className={cls}>
+          <div
+            key={n}
+            className={cls}
+            onClick={inResult ? () => onToggle(n) : undefined}
+            title={inResult ? "Klik untuk pilih " + n : undefined}
+          >
             {n}
           </div>
         );
@@ -28,7 +36,7 @@ function Grid({ top, p1, p2, p3, p4, px }) {
   );
 }
 
-function Card({ title, count, items, accent }) {
+function Card({ title, count, items, accent, selected, onToggle, onPickAll }) {
   const [copied, setCopied] = useState(false);
   const val = items.join("*");
 
@@ -48,15 +56,88 @@ function Card({ title, count, items, accent }) {
         <h3>
           {title} <span className="cnt">= {count} LN</span>
         </h3>
-        <button
-          type="button"
-          onClick={doCopy}
-          className={"copyBtn" + (copied ? " copyBtnOk" : "")}
-        >
-          {copied ? "COPIED!" : "COPY LN"}
-        </button>
+        <div className="cardBtns">
+          <button
+            type="button"
+            onClick={() => onPickAll(items)}
+            className="pickBtn"
+            title="Pilih semua angka kartu ini"
+          >
+            PILIH
+          </button>
+          <button
+            type="button"
+            onClick={doCopy}
+            className={"copyBtn" + (copied ? " copyBtnOk" : "")}
+          >
+            {copied ? "COPIED!" : "COPY LN"}
+          </button>
+        </div>
       </header>
       <textarea readOnly value={val} rows={3} className="cardArea" />
+      <div className="chipRow">
+        {items.map((n) => (
+          <span
+            key={n}
+            className={"chip" + (selected.has(n) ? " chipSel" : "")}
+            onClick={() => onToggle(n)}
+          >
+            {n}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SelectionPanel({ selected, onToggle, onClear }) {
+  const [copied, setCopied] = useState(false);
+  const items = [...selected];
+  const val = items.join("*");
+
+  async function doCopy() {
+    try {
+      await navigator.clipboard.writeText(val);
+    } catch {
+      /* ignore */
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  }
+
+  return (
+    <section className="selPanel">
+      <header className="selHead">
+        <h3>
+          ⭐ PILIHAN SAYA <span className="cnt">= {items.length} LN</span>
+        </h3>
+        <div className="cardBtns">
+          <button type="button" onClick={doCopy} className={"copyBtn" + (copied ? " copyBtnOk" : "")}>
+            {copied ? "COPIED!" : "COPY PILIHAN"}
+          </button>
+          <button type="button" onClick={onClear} className="pickBtn">
+            KOSONGKAN
+          </button>
+        </div>
+      </header>
+      {items.length > 0 ? (
+        <div className="chipRow">
+          {items.map((n) => (
+            <span
+              key={n}
+              className="chip chipSel"
+              onClick={() => onToggle(n)}
+              title="Klik untuk hapus dari pilahan"
+            >
+              {n} ✕
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="selHint">
+          Klik angka di grid atau kartu di atas untuk menyusun pilihanmu.
+        </p>
+      )}
     </section>
   );
 }
@@ -65,9 +146,31 @@ export default function Page() {
   const [raw, setRaw] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [selected, setSelected] = useState(() => new Set());
 
   function onChange(e) {
     setRaw(e.target.value.replace(/[^\d\n\r]/g, ""));
+  }
+
+  function toggleSel(n) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+  }
+
+  function pickAll(items) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      items.forEach((x) => next.add(x));
+      return next;
+    });
+  }
+
+  function clearSel() {
+    setSelected(new Set());
   }
 
   function doGenerate() {
@@ -97,12 +200,14 @@ export default function Page() {
       }
 
       setResult(r);
+      setSelected(new Set()); // new result -> start a fresh selection
     }, 600);
   }
 
   function doReset() {
     setRaw("");
     setResult(null);
+    setSelected(new Set());
     setBusy(false);
   }
 
@@ -159,32 +264,93 @@ export default function Page() {
             </p>
           )}
 
-          <Grid top={top} p1={p1} p2={p2} p3={p3} p4={p4} px={px} />
+          <Grid
+            top={top}
+            p1={p1}
+            p2={p2}
+            p3={p3}
+            p4={p4}
+            px={px}
+            selected={selected}
+            onToggle={toggleSel}
+          />
+
+          <SelectionPanel
+            selected={selected}
+            onToggle={toggleSel}
+            onClear={clearSel}
+          />
 
           {top.length > 0 && (
-            <Card title="LN TOP" count={top.length} items={top} accent="green" />
+            <Card
+              title="LN TOP"
+              count={top.length}
+              items={top}
+              accent="green"
+              selected={selected}
+              onToggle={toggleSel}
+              onPickAll={pickAll}
+            />
           )}
           {p1.length > 0 && (
-            <Card title="Patah 1" count={p1.length} items={p1} accent="red" />
+            <Card
+              title="Patah 1"
+              count={p1.length}
+              items={p1}
+              accent="red"
+              selected={selected}
+              onToggle={toggleSel}
+              onPickAll={pickAll}
+            />
           )}
           {p2.length > 0 && (
-            <Card title="Patah 2" count={p2.length} items={p2} accent="red" />
+            <Card
+              title="Patah 2"
+              count={p2.length}
+              items={p2}
+              accent="red"
+              selected={selected}
+              onToggle={toggleSel}
+              onPickAll={pickAll}
+            />
           )}
           {p3.length > 0 && (
-            <Card title="Patah 3" count={p3.length} items={p3} accent="red" />
+            <Card
+              title="Patah 3"
+              count={p3.length}
+              items={p3}
+              accent="red"
+              selected={selected}
+              onToggle={toggleSel}
+              onPickAll={pickAll}
+            />
           )}
           {p4.length > 0 && (
-            <Card title="Patah 4" count={p4.length} items={p4} accent="red" />
+            <Card
+              title="Patah 4"
+              count={p4.length}
+              items={p4}
+              accent="red"
+              selected={selected}
+              onToggle={toggleSel}
+              onPickAll={pickAll}
+            />
           )}
           {px.length > 0 && (
-            <Card title="Patah > 5" count={px.length} items={px} accent="red" />
+            <Card
+              title="Patah > 5"
+              count={px.length}
+              items={px}
+              accent="red"
+              selected={selected}
+              onToggle={toggleSel}
+              onPickAll={pickAll}
+            />
           )}
         </section>
       )}
 
-      <footer className="foot">
-        Generator LN · by LuckyOne18
-      </footer>
+      <footer className="foot">Generator LN · by LuckyOne18</footer>
     </main>
   );
 }
