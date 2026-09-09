@@ -61,8 +61,7 @@ export function runBacktest(
   let tHits = 0;
   let tSum = 0;
   let tMax = 0;
-  let lTopHits = 0;
-  let lPatahHits = 0;
+  const lZoneCounts = { top: 0, p1: 0, p2: 0, p3: 0, p4: 0, px: 0 };
 
   for (let i = 0; i < results.length - 1; i++) {
     const prev = results[i];
@@ -88,23 +87,18 @@ export function runBacktest(
 
     // LN (mode 2D/3D/4D): ekor result berikutnya (2/3/4 digit terakhir)
     // dicek zona-nya di partisi hasil generate. Karena partisi menutup
-    // seluruh pool, setiap langkah pasti masuk TOP atau Patah — metrik
-    // yang berarti adalah proporsi TOP vs Patah.
-    let lTop = false;
-    let lPatah = false;
+    // seluruh pool, setiap langkah pasti masuk salah satu zona — metrik
+    // yang berarti adalah proporsi per zona (TOP vs Patah 1..>5).
+    let lZone = null;
     if (ln.enabled) {
       const suffix = next.slice(-ln.mode);
-      lTop = r.top.includes(suffix);
-      if (!lTop) {
-        lPatah =
-          r.p1.includes(suffix) ||
-          r.p2.includes(suffix) ||
-          r.p3.includes(suffix) ||
-          r.p4.includes(suffix) ||
-          r.px.includes(suffix);
-      }
-      if (lTop) lTopHits++;
-      if (lPatah) lPatahHits++;
+      if (r.top.includes(suffix)) lZone = "top";
+      else if (r.p1.includes(suffix)) lZone = "p1";
+      else if (r.p2.includes(suffix)) lZone = "p2";
+      else if (r.p3.includes(suffix)) lZone = "p3";
+      else if (r.p4.includes(suffix)) lZone = "p4";
+      else if (r.px.includes(suffix)) lZone = "px";
+      if (lZone) lZoneCounts[lZone]++;
     }
 
     // Tardal: kombinasi dari digit kress dianggap "kena" bila kombinasi
@@ -149,8 +143,7 @@ export function runBacktest(
       kressCount: kressDigits.length,
       inCount,
       hit,
-      lTop,
-      lPatah,
+      lZone,
       tAvailable,
       tCombos,
       tCount,
@@ -205,10 +198,12 @@ export function runBacktest(
     trend,
     lnOpt: ln,
     lSteps: ln.enabled ? steps : 0,
-    lTopHits,
-    lTopRate: ln.enabled && steps > 0 ? (lTopHits / steps) * 100 : null,
-    lPatahHits,
-    lPatahRate: ln.enabled && steps > 0 ? (lPatahHits / steps) * 100 : null,
+    lZoneCounts,
+    lZoneRates: ln.enabled && steps > 0
+      ? Object.fromEntries(
+          Object.entries(lZoneCounts).map(([z, c]) => [z, (c / steps) * 100])
+        )
+      : null,
     tOpt,
     tSteps: tOpt.enabled ? tSteps : 0,
     tHits,

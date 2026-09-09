@@ -6,6 +6,20 @@ import { parseResults, runBacktest } from "../backtest";
 
 const pct = (v) => (v == null ? "–" : v.toFixed(1) + "%");
 
+const ZONES = [
+  { key: "top", label: "TOP" },
+  { key: "p1", label: "Patah 1" },
+  { key: "p2", label: "Patah 2" },
+  { key: "p3", label: "Patah 3" },
+  { key: "p4", label: "Patah 4" },
+  { key: "px", label: "Patah > 5" },
+];
+
+function zoneName(zone) {
+  const z = ZONES.find((x) => x.key === zone);
+  return z ? z.label : "–";
+}
+
 export default function UjiKinerjaPage() {
   const [raw, setRaw] = useState("");
   const [kressOpt, setKressOpt] = useState("");
@@ -241,25 +255,35 @@ export default function UjiKinerjaPage() {
           {useLN && report.lSteps > 0 && (
             <>
               <div className="sectionTitle">Kinerja LN ({report.lnOpt.mode}D)</div>
-              <div className="statGrid statGrid3">
-                <div className="statBox statMain">
-                  <div className="statVal">{pct(report.lTopRate)}</div>
-                  <div className="statLabel">Kena Zona TOP</div>
-                  <div className="statSub">
-                    {report.lTopHits} dari {report.lSteps} langkah
+              <div className="statGrid">
+                {ZONES.map((z) => (
+                  <div key={z.key} className={"statBox" + (z.key === "top" ? " statMain" : "")}>
+                    <div className="statVal">{pct(report.lZoneRates[z.key])}</div>
+                    <div className="statLabel">{z.label}</div>
+                    <div className="statSub">
+                      {report.lZoneCounts[z.key]} dari {report.lSteps} langkah
+                    </div>
                   </div>
+                ))}
+              </div>
+              <div className="visualBlock">
+                <div className="visualHead">
+                  <span>Visual per langkah (ekor result berikutnya)</span>
+                  <span className="visualLegend">
+                    <span className="legendChip legendHit">hit (TOP)</span>
+                    <span className="legendChip legendMiss">miss (patah)</span>
+                  </span>
                 </div>
-                <div className="statBox">
-                  <div className="statVal">{pct(report.lPatahRate)}</div>
-                  <div className="statLabel">Kena Zona Patah</div>
-                  <div className="statSub">
-                    {report.lPatahHits} dari {report.lSteps} langkah
-                  </div>
-                </div>
-                <div className="statBox">
-                  <div className="statVal">{report.lnOpt.mode} digit</div>
-                  <div className="statLabel">Ekor Result Dicek</div>
-                  <div className="statSub">digit terakhir result berikutnya</div>
+                <div className="visualGrid">
+                  {report.rows.map((row, i) => (
+                    <div
+                      key={i}
+                      className={"vCell " + (row.lZone === "top" ? "vHit" : "vMiss")}
+                      title={`#${i + 1} · prev=${row.prev} → next=${row.next} · kress=${row.kress} · ekor=${row.next.slice(-report.lnOpt.mode)} · zona=${zoneName(row.lZone)}`}
+                    >
+                      {row.next.slice(-report.lnOpt.mode)}
+                    </div>
+                  ))}
                 </div>
               </div>
             </>

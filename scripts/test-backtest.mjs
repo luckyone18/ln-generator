@@ -101,25 +101,39 @@ console.log("== runBacktest + LN (mode/enable) ==");
 const lnOn = runBacktest(results, 3, { enabled: false }, { mode: "2", enabled: true });
 check("LN 2D: lSteps = steps", lnOn.lSteps === lnOn.steps);
 check(
-  "LN 2D: tiap langkah TOP xor Patah",
-  lnOn.rows.every((row) => row.lTop !== row.lPatah)
+  "LN 2D: tiap langkah punya zona (top/p1..px)",
+  lnOn.rows.every((row) =>
+    ["top", "p1", "p2", "p3", "p4", "px"].includes(row.lZone)
+  )
 );
-check("LN 2D: lTopRate + lPatahRate = 100", Math.abs(lnOn.lTopRate + lnOn.lPatahRate - 100) < 1e-9);
+const zoneSum = Object.values(lnOn.lZoneCounts).reduce((a, b) => a + b, 0);
+check("LN 2D: jumlah semua zona = steps", zoneSum === lnOn.steps);
+check(
+  "LN 2D: rate zona konsisten dgn count",
+  Math.abs(
+    Object.entries(lnOn.lZoneRates).reduce(
+      (acc, [z, r]) => acc + (r - (lnOn.lZoneCounts[z] / lnOn.steps) * 100),
+      0
+    )
+  ) < 1e-9
+);
 
 // Mode 3D/4D: ekor 3/4 digit next dicek
 const ln3 = runBacktest(results, 3, { enabled: false }, { mode: "3", enabled: true });
 check("LN 3D: lSteps = steps", ln3.lSteps === ln3.steps);
 check(
-  "LN 3D: tiap langkah TOP xor Patah",
-  ln3.rows.every((row) => row.lTop !== row.lPatah)
+  "LN 3D: tiap langkah punya zona",
+  ln3.rows.every((row) =>
+    ["top", "p1", "p2", "p3", "p4", "px"].includes(row.lZone)
+  )
 );
 const ln4 = runBacktest(results, 3, { enabled: false }, { mode: "4", enabled: true });
 check("LN 4D: lSteps = steps", ln4.lSteps === ln4.steps);
 
 // LN dimatikan via ceklis
 const lnOff = runBacktest(results, 3, null, { mode: "2", enabled: false });
-check("LN off: lSteps 0, rate null", lnOff.lSteps === 0 && lnOff.lTopRate === null && lnOff.lPatahRate === null);
-check("LN off: rows lTop/lPatah false", lnOff.rows.every((row) => !row.lTop && !row.lPatah));
+check("LN off: lSteps 0, rates null", lnOff.lSteps === 0 && lnOff.lZoneRates === null);
+check("LN off: rows lZone null", lnOff.rows.every((row) => row.lZone === null));
 
 // Tardal dimatikan via ceklis
 const tOff = runBacktest(results, 3, { type: "2", twin: "1", enabled: false }, { mode: "2", enabled: true });
