@@ -61,5 +61,5 @@ export function generateTardal({ digits, type, twin, splitter }) {
     rec("", uniq.join(""));
   }
 
-  return { result: combos.join(sep), count: combos.length };
+  return { result: combos.join(sep), count: combos.length, combos, sep };
 }

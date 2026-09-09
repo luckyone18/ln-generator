@@ -373,7 +373,42 @@ body {
   padding: 4px 0 2px;
 }
 
-/* ---------------- generator tardal ---------------- */
+/* ---------------- search in tardal output ---------------- */
+.searchRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.searchInput {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  color: var(--ink);
+}
+.searchInput:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+.searchClear {
+  width: 38px;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.searchClear:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ---------------- tardal output ---------------- */
 .sectionTitle {
   font-size: 20px;
   font-weight: 800;

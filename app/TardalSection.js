@@ -4,11 +4,12 @@ import { useState } from "react";
 import { generateTardal } from "./tardal";
 
 export default function TardalSection({ digits, onDigitsChange }) {
-  const [type, setType] = useState("2");
-  const [twin, setTwin] = useState("1");
+  const [type, setType] = useState("4"); // default 4D
+  const [twin, setTwin] = useState("2"); // default No Twin
   const [splitter, setSplitter] = useState("*");
-  const [output, setOutput] = useState(null); // { result, count } | null
+  const [output, setOutput] = useState(null); // { result, count, combos, sep } | null
   const [copied, setCopied] = useState(false);
+  const [query, setQuery] = useState(""); // cari angka di hasil
 
   function onChange(e) {
     const cleaned = e.target.value.replace(/[^\d]/g, "").slice(0, 15);
@@ -32,23 +33,33 @@ export default function TardalSection({ digits, onDigitsChange }) {
 
   function doReset() {
     onDigitsChange("");
-    setType("2");
-    setTwin("1");
+    setType("4");
+    setTwin("2");
     setSplitter("*");
     setOutput(null);
     setCopied(false);
+    setQuery("");
   }
 
   async function doCopy() {
-    if (!output?.result) return;
+    if (!show) return;
     try {
-      await navigator.clipboard.writeText(output.result);
+      await navigator.clipboard.writeText(show);
     } catch {
       /* clipboard blocked (non-https) — ignore */
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 1200);
   }
+
+  // Search/filter over the generated combos (substring match, e.g. "12").
+  const q = query.trim();
+  const filtered = output
+    ? q
+      ? output.combos.filter((c) => c.includes(q))
+      : output.combos
+    : [];
+  const show = output ? filtered.join(output.sep) : "";
 
   return (
     <section className="inputCard" id="tardal">
@@ -111,14 +122,41 @@ export default function TardalSection({ digits, onDigitsChange }) {
 
       {output && (
         <div className="tardalOut">
+          <div className="searchRow">
+            <input
+              type="text"
+              inputMode="numeric"
+              className="searchInput"
+              placeholder="Cari angka…"
+              maxLength={4}
+              value={query}
+              onChange={(e) =>
+                setQuery(e.target.value.replace(/[^\d]/g, "").slice(0, 4))
+              }
+              aria-label="Cari angka dari hasil tardal"
+            />
+            {query && (
+              <button
+                type="button"
+                className="searchClear"
+                onClick={() => setQuery("")}
+                aria-label="Hapus pencarian"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <div className="tardalOutHead">
             <p className="tardalLine">
-              Total: {output.count} LN
+              {q
+                ? `Ditemukan: ${filtered.length} dari ${output.count} LN`
+                : `Total: ${output.count} LN`}
             </p>
             <button
               type="button"
               className={"copyBtn" + (copied ? " copyBtnOk" : "")}
               onClick={doCopy}
+              disabled={!show}
             >
               {copied ? "COPIED!" : "Copy"}
             </button>
@@ -127,7 +165,7 @@ export default function TardalSection({ digits, onDigitsChange }) {
             readOnly
             rows={5}
             className="cardArea"
-            value={output.result}
+            value={show}
           />
         </div>
       )}
