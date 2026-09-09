@@ -585,6 +585,36 @@ body {
   color: var(--red);
   font-weight: 800;
 }
+.checkRow {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.checkItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+}
+.checkItem input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+.checkItem input[type="checkbox"]:disabled + span,
+.checkItem.disabled {
+  color: var(--muted);
+}
+.optSelect:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #f1f3f5;
+}
 
 @media (max-width: 480px) {
   .cell {

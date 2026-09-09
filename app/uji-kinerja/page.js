@@ -9,6 +9,9 @@ const pct = (v) => (v == null ? "–" : v.toFixed(1) + "%");
 export default function UjiKinerjaPage() {
   const [raw, setRaw] = useState("");
   const [kressOpt, setKressOpt] = useState("");
+  const [lnMode, setLnMode] = useState("2");
+  const [useLN, setUseLN] = useState(true);
+  const [useTardal, setUseTardal] = useState(true);
   const [tardalType, setTardalType] = useState("4");
   const [tardalTwin, setTardalTwin] = useState("2");
   const [tardalSplitter, setTardalSplitter] = useState("*");
@@ -17,12 +20,18 @@ export default function UjiKinerjaPage() {
   const parsed = useMemo(() => parseResults(raw), [raw]);
   const report = useMemo(() => {
     if (!ran) return null;
-    return runBacktest(parsed.results, kressOpt === "" ? null : Number(kressOpt), {
-      type: tardalType,
-      twin: tardalTwin,
-      splitter: tardalSplitter,
-    });
-  }, [ran, parsed, kressOpt, tardalType, tardalTwin, tardalSplitter]);
+    return runBacktest(
+      parsed.results,
+      kressOpt === "" ? null : Number(kressOpt),
+      {
+        type: tardalType,
+        twin: tardalTwin,
+        splitter: tardalSplitter,
+        enabled: useTardal,
+      },
+      { mode: lnMode, enabled: useLN }
+    );
+  }, [ran, parsed, kressOpt, lnMode, useLN, useTardal, tardalType, tardalTwin, tardalSplitter]);
 
   function onChange(e) {
     setRaw(e.target.value.replace(/[^\d\n\r\s]/g, ""));
@@ -40,6 +49,9 @@ export default function UjiKinerjaPage() {
   function doReset() {
     setRaw("");
     setKressOpt("");
+    setLnMode("2");
+    setUseLN(true);
+    setUseTardal(true);
     setTardalType("4");
     setTardalTwin("2");
     setTardalSplitter("*");
@@ -92,42 +104,84 @@ export default function UjiKinerjaPage() {
             <option value="7">7 digit</option>
           </select>
         </div>
-
-        <div className="sectionTitle">Setelan Tardal</div>
-        <div className="tardalRow">
+        <div className="optRow">
+          <label className="optLabel" htmlFor="bkLnMode">
+            Pilih LN:
+          </label>
           <select
-            aria-label="Tipe tardal"
-            className="tardalSelect"
-            value={tardalType}
-            onChange={(e) => setTardalType(e.target.value)}
+            id="bkLnMode"
+            className="optSelect"
+            value={lnMode}
+            onChange={(e) => setLnMode(e.target.value)}
+            disabled={!useLN}
           >
-            <option value="2">2D</option>
-            <option value="3">3D</option>
-            <option value="4">4D</option>
-          </select>
-          <select
-            aria-label="Mode twin"
-            className="tardalSelect"
-            value={tardalTwin}
-            onChange={(e) => setTardalTwin(e.target.value)}
-          >
-            <option value="1">Twin</option>
-            <option value="2">No Twin</option>
-          </select>
-          <select
-            aria-label="Pemisah"
-            className="tardalSelect"
-            value={tardalSplitter}
-            onChange={(e) => setTardalSplitter(e.target.value)}
-          >
-            <option value="*">*</option>
-            <option value="#">#</option>
-            <option value=",">,</option>
+            <option value="2">2D (00–99) = 100 LN</option>
+            <option value="3">3D (000–999) = 1.000 LN</option>
+            <option value="4">4D (0000–9999) = 10.000 LN</option>
           </select>
         </div>
-        <p className="sectionHint">
-          Kombinasi tardal dihitung dari digit Kress Ai tiap langkah, dianggap kena bila muncul pada posisi persis di result berikutnya.
-        </p>
+
+        <div className="optRow">
+          <label className="optLabel">Uji yang diaktifkan:</label>
+          <div className="checkRow">
+            <label className="checkItem">
+              <input
+                type="checkbox"
+                checked={useLN}
+                onChange={(e) => setUseLN(e.target.checked)}
+              />
+              <span>LN (TOP / Patah)</span>
+            </label>
+            <label className="checkItem">
+              <input
+                type="checkbox"
+                checked={useTardal}
+                onChange={(e) => setUseTardal(e.target.checked)}
+              />
+              <span>Tardal</span>
+            </label>
+          </div>
+        </div>
+
+        {useTardal && (
+          <>
+            <div className="sectionTitle">Setelan Tardal</div>
+            <div className="tardalRow">
+              <select
+                aria-label="Tipe tardal"
+                className="tardalSelect"
+                value={tardalType}
+                onChange={(e) => setTardalType(e.target.value)}
+              >
+                <option value="2">2D</option>
+                <option value="3">3D</option>
+                <option value="4">4D</option>
+              </select>
+              <select
+                aria-label="Mode twin"
+                className="tardalSelect"
+                value={tardalTwin}
+                onChange={(e) => setTardalTwin(e.target.value)}
+              >
+                <option value="1">Twin</option>
+                <option value="2">No Twin</option>
+              </select>
+              <select
+                aria-label="Pemisah"
+                className="tardalSelect"
+                value={tardalSplitter}
+                onChange={(e) => setTardalSplitter(e.target.value)}
+              >
+                <option value="*">*</option>
+                <option value="#">#</option>
+                <option value=",">,</option>
+              </select>
+            </div>
+            <p className="sectionHint">
+              Kombinasi tardal dihitung dari digit Kress Ai tiap langkah, dianggap kena bila muncul pada posisi persis di result berikutnya.
+            </p>
+          </>
+        )}
 
         <div className="btnRow">
           <button type="button" className="btn btnGreen" onClick={doRun}>
@@ -184,8 +238,37 @@ export default function UjiKinerjaPage() {
             </div>
           </div>
 
-          <div className="sectionTitle">Kinerja Tardal ({report.tOpt.type}D · {report.tOpt.twin === "1" ? "Twin" : "No Twin"})</div>
-          {report.tSteps > 0 ? (
+          {useLN && report.lSteps > 0 && (
+            <>
+              <div className="sectionTitle">Kinerja LN ({report.lnOpt.mode}D)</div>
+              <div className="statGrid statGrid3">
+                <div className="statBox statMain">
+                  <div className="statVal">{pct(report.lTopRate)}</div>
+                  <div className="statLabel">Kena Zona TOP</div>
+                  <div className="statSub">
+                    {report.lTopHits} dari {report.lSteps} langkah
+                  </div>
+                </div>
+                <div className="statBox">
+                  <div className="statVal">{pct(report.lPatahRate)}</div>
+                  <div className="statLabel">Kena Zona Patah</div>
+                  <div className="statSub">
+                    {report.lPatahHits} dari {report.lSteps} langkah
+                  </div>
+                </div>
+                <div className="statBox">
+                  <div className="statVal">{report.lnOpt.mode} digit</div>
+                  <div className="statLabel">Ekor Result Dicek</div>
+                  <div className="statSub">digit terakhir result berikutnya</div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {useTardal && (
+            <>
+              <div className="sectionTitle">Kinerja Tardal ({report.tOpt.type}D · {report.tOpt.twin === "1" ? "Twin" : "No Twin"})</div>
+              {report.tSteps > 0 ? (
             <div className="statGrid statGrid3">
               <div className="statBox statMain">
                 <div className="statVal">{pct(report.tHitRate)}</div>
@@ -205,10 +288,12 @@ export default function UjiKinerjaPage() {
                 <div className="statSub">dalam satu langkah</div>
               </div>
             </div>
-          ) : (
-            <p className="trendLine">
-              Tidak ada langkah tardal yang bisa diuji dengan setelan ini — coba pilih tipe lebih kecil (2D/3D) atau mode Twin.
-            </p>
+              ) : (
+                <p className="trendLine">
+                  Tidak ada langkah tardal yang bisa diuji dengan setelan ini — coba pilih tipe lebih kecil (2D/3D) atau mode Twin.
+                </p>
+              )}
+            </>
           )}
 
           {report.trend && (

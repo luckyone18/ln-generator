@@ -96,5 +96,43 @@ check(
   one.rows[0].tCount === 0 || one.rows[0].kress[0] === "4" || one.rows[0].kress[1] === "7"
 );
 
+console.log("== runBacktest + LN (mode/enable) ==");
+// LN aktif default (mode 2D): ekor 2 digit next pasti TOP atau Patah (partisi penuh)
+const lnOn = runBacktest(results, 3, { enabled: false }, { mode: "2", enabled: true });
+check("LN 2D: lSteps = steps", lnOn.lSteps === lnOn.steps);
+check(
+  "LN 2D: tiap langkah TOP xor Patah",
+  lnOn.rows.every((row) => row.lTop !== row.lPatah)
+);
+check("LN 2D: lTopRate + lPatahRate = 100", Math.abs(lnOn.lTopRate + lnOn.lPatahRate - 100) < 1e-9);
+
+// Mode 3D/4D: ekor 3/4 digit next dicek
+const ln3 = runBacktest(results, 3, { enabled: false }, { mode: "3", enabled: true });
+check("LN 3D: lSteps = steps", ln3.lSteps === ln3.steps);
+check(
+  "LN 3D: tiap langkah TOP xor Patah",
+  ln3.rows.every((row) => row.lTop !== row.lPatah)
+);
+const ln4 = runBacktest(results, 3, { enabled: false }, { mode: "4", enabled: true });
+check("LN 4D: lSteps = steps", ln4.lSteps === ln4.steps);
+
+// LN dimatikan via ceklis
+const lnOff = runBacktest(results, 3, null, { mode: "2", enabled: false });
+check("LN off: lSteps 0, rate null", lnOff.lSteps === 0 && lnOff.lTopRate === null && lnOff.lPatahRate === null);
+check("LN off: rows lTop/lPatah false", lnOff.rows.every((row) => !row.lTop && !row.lPatah));
+
+// Tardal dimatikan via ceklis
+const tOff = runBacktest(results, 3, { type: "2", twin: "1", enabled: false }, { mode: "2", enabled: true });
+check("tardal off: tSteps 0, rate null", tOff.tSteps === 0 && tOff.tHitRate === null);
+check("tardal off: rows tAvailable false", tOff.rows.every((row) => !row.tAvailable));
+
+// kress metrics tetap ada walau LN & tardal off
+check("kress metrics tetap", tOff.kressRate != null && tOff.steps === lnOff.steps);
+
+// Determinisme dengan semua opsi
+const d1 = JSON.stringify(runBacktest(results, 3, { type: "2", twin: "1" }, { mode: "3" }));
+const d2 = JSON.stringify(runBacktest(results, 3, { type: "2", twin: "1" }, { mode: "3" }));
+check("deterministik (opsi lengkap)", d1 === d2);
+
 console.log(failures === 0 ? "✅ ALL BACKTEST TESTS PASSED" : `❌ ${failures} FAILURES`);
 process.exit(failures === 0 ? 0 : 1);
