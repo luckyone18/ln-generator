@@ -149,6 +149,8 @@ export default function Page() {
   const [result, setResult] = useState(null);
   const [selected, setSelected] = useState(() => new Set());
   const [kressOpt, setKressOpt] = useState(""); // "" = acak (3-6)
+  const [showLN, setShowLN] = useState(false); // LN hidden until "TAMPILKAN LN"
+  const [tardalDigits, setTardalDigits] = useState(""); // auto-filled from kress
 
   function onChange(e) {
     setRaw(e.target.value.replace(/[^\d\n\r]/g, ""));
@@ -203,6 +205,11 @@ export default function Page() {
 
       setResult(r);
       setSelected(new Set()); // new result -> start a fresh selection
+      setShowLN(false); // hasil cukup sampai Kress Ai; LN dibuka lewat tombol
+      if (r.kress) {
+        // Isi otomatis kotak TARDAL dengan digit kress (tanpa spasi)
+        setTardalDigits(r.kress.replace(/\s/g, ""));
+      }
     }, 600);
   }
 
@@ -211,6 +218,7 @@ export default function Page() {
     setResult(null);
     setSelected(new Set());
     setKressOpt("");
+    setShowLN(false);
     setBusy(false);
   }
 
@@ -285,6 +293,16 @@ export default function Page() {
             </p>
           )}
 
+          <button
+            type="button"
+            className={"revealBtn" + (showLN ? " revealBtnOpen" : "")}
+            onClick={() => setShowLN((v) => !v)}
+          >
+            {showLN ? "SEMBUNYIKAN LN" : "TAMPILKAN LN"}
+          </button>
+
+          {showLN && (
+          <>
           <Grid
             top={top}
             p1={p1}
@@ -368,10 +386,15 @@ export default function Page() {
               onPickAll={pickAll}
             />
           )}
+          </>
+          )}
         </section>
       )}
 
-      <TardalSection />
+      <TardalSection
+        digits={tardalDigits}
+        onDigitsChange={setTardalDigits}
+      />
 
       <footer className="foot">Generator LN · by LuckyOne18</footer>
     </main>

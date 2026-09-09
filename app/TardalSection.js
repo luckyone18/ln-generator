@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { generateTardal } from "./tardal";
 
-export default function TardalSection() {
-  const [digits, setDigits] = useState("");
+export default function TardalSection({ digits, onDigitsChange }) {
   const [type, setType] = useState("2");
   const [twin, setTwin] = useState("1");
   const [splitter, setSplitter] = useState("*");
@@ -12,7 +11,8 @@ export default function TardalSection() {
   const [copied, setCopied] = useState(false);
 
   function onChange(e) {
-    setDigits(e.target.value.replace(/[^\d]/g, "").slice(0, 15));
+    const cleaned = e.target.value.replace(/[^\d]/g, "").slice(0, 15);
+    onDigitsChange(cleaned);
   }
 
   function doGenerate(e) {
@@ -31,7 +31,7 @@ export default function TardalSection() {
   }
 
   function doReset() {
-    setDigits("");
+    onDigitsChange("");
     setType("2");
     setTwin("1");
     setSplitter("*");
@@ -53,6 +53,10 @@ export default function TardalSection() {
   return (
     <section className="inputCard" id="tardal">
       <h2 className="sectionTitle">GENERATOR TARDAL</h2>
+      <p className="sectionHint">
+        Digit Kress Ai dari hasil generate di atas terisi otomatis — ubah atau
+        tambah angka sesuai keinginan.
+      </p>
 
       <form onSubmit={doGenerate} onReset={doReset}>
         <div className="tardalRow">
