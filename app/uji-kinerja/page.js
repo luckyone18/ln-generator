@@ -235,7 +235,7 @@ export default function UjiKinerjaPage() {
           ← Kembali ke Generator LN
         </Link>
         {" · "}
-        Generator LN · by LuckyOne18 ·{" "}
+        Generator LN ·{" "}
         <a href="https://unlaproject.my.id" className="footLink">
           unlaproject.my.id
         </a>

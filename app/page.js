@@ -418,7 +418,7 @@ export default function Page() {
       )}
 
       <footer className="foot">
-        Generator LN · by LuckyOne18 ·{" "}
+        Generator LN ·{" "}
         <a href="https://unlaproject.my.id" className="footLink">
           unlaproject.my.id
         </a>
