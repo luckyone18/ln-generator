@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { generate, parseInput } from "./algorithm";
 import TardalSection from "./TardalSection";
 
@@ -294,6 +295,9 @@ export default function Page() {
           >
             TARDAL
           </button>
+          <Link href="/uji-kinerja" className="btn btnBlue">
+            UJI KINERJA
+          </Link>
         </div>
         {busy && <p className="loading">MEMPROSES ANALISA PREDIKSI...</p>}
       </section>
