@@ -102,6 +102,38 @@ check("kress 99 -> clamp ke 7", generate("1234", 99).kress.split(" ").length ===
 const acak = generate("1234");
 check("kress acak 3-6", acak.kress.split(" ").length >= 3 && acak.kress.split(" ").length <= 6);
 
+// LN mode 2D/3D/4D
+console.log("LN mode (2D/3D/4D):");
+for (const mode of [2, 3, 4]) {
+  const total = 10 ** mode;
+  const rM = generate("1234", null, mode);
+  const allM = [rM.top, rM.p1, rM.p2, rM.p3, rM.p4, rM.px].flat();
+  check(
+    `mode ${mode}D: total = ${total}, no dup`,
+    allM.length === total && new Set(allM).size === total,
+    `(got ${allM.length})`
+  );
+  check(
+    `mode ${mode}D: semua item ${mode}-digit`,
+    allM.every((x) => new RegExp(`^\\d{${mode}}$`).test(x))
+  );
+  check(`mode ${mode}D: field mode = ${mode}`, rM.mode === mode);
+  const rM2 = generate("1234", null, mode);
+  check(
+    `mode ${mode}D: deterministik`,
+    JSON.stringify([rM.kress, rM.top]) === JSON.stringify([rM2.kress, rM2.top])
+  );
+  // Kress digit-count option tetap bekerja di mode besar
+  const rMk = generate("1234", 5, mode);
+  check(`mode ${mode}D: kress 5 digit ok`, rMk.kress.split(" ").length === 5);
+  // Proporsi zona masuk akal (TOP ~30-50%)
+  check(`mode ${mode}D: TOP 30-50%`, rM.top.length >= 0.3 * total && rM.top.length <= 0.5 * total, `(got ${rM.top.length})`);
+}
+// 2D identik dengan implementasi lama: klamp kress dianggap sama; cek kompatibilitas param
+check("mode default = 2D", generate("1234").top.length === generate("1234", null, 2).top.length);
+check("mode invalid fallback 2D", JSON.stringify(generate("1234", null, 9).top) === JSON.stringify(generate("1234", null, 2).top));
+check("mode 0/NaN fallback 2D", JSON.stringify(generate("1234", null, 0).top) === JSON.stringify(generate("1234", null, 2).top));
+
 function sig2(r) {
   return JSON.stringify([r.kress, r.top, r.p1, r.p2, r.p3, r.p4, r.px]);
 }

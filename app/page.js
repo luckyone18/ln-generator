@@ -150,6 +150,7 @@ export default function Page() {
   const [result, setResult] = useState(null);
   const [selected, setSelected] = useState(() => new Set());
   const [kressOpt, setKressOpt] = useState(""); // "" = acak (3-6)
+  const [lnMode, setLnMode] = useState("2"); // 2 = 2D (100 LN), 3 = 3D, 4 = 4D
   const [showLN, setShowLN] = useState(false); // LN hidden until "TAMPILKAN LN"
   const [tardalDigits, setTardalDigits] = useState(""); // auto-filled from kress
   const [tardalToken, setTardalToken] = useState(0); // naik tiap generate -> auto tardal
@@ -188,20 +189,26 @@ export default function Page() {
     setBusy(true);
     // Brief delay for the "analysis" UX, then compute deterministically.
     setTimeout(() => {
-      const r = generate(raw, kressOpt === "" ? null : Number(kressOpt));
+      const r = generate(
+        raw,
+        kressOpt === "" ? null : Number(kressOpt),
+        Number(lnMode)
+      );
       setBusy(false);
       if (r.error) {
         alert(r.error);
         return;
       }
 
-      // Self-check: partition must total exactly 100 with no duplicates.
+      // Self-check: partition must total exactly 10^mode with no duplicates.
       const all = [...r.top, ...r.p1, ...r.p2, ...r.p3, ...r.p4, ...r.px];
+      const expected = 10 ** Number(lnMode);
       const hasDup = new Set(all).size !== all.length;
-      if (all.length !== 100 || hasDup) {
+      if (all.length !== expected || hasDup) {
         console.warn(
-          "[Generator LN] partition check failed: total=%d dup=%s",
+          "[Generator LN] partition check failed: total=%d expected=%d dup=%s",
           all.length,
+          expected,
           hasDup
         );
       }
@@ -224,6 +231,7 @@ export default function Page() {
     setResult(null);
     setSelected(new Set());
     setKressOpt("");
+    setLnMode("2");
     setShowLN(false);
     setTardalOpen(false);
     setBusy(false);
@@ -268,6 +276,21 @@ export default function Page() {
             <option value="5">5 digit</option>
             <option value="6">6 digit</option>
             <option value="7">7 digit</option>
+          </select>
+        </div>
+        <div className="optRow">
+          <label className="optLabel" htmlFor="lnMode">
+            Pilih LN:
+          </label>
+          <select
+            id="lnMode"
+            className="optSelect"
+            value={lnMode}
+            onChange={(e) => setLnMode(e.target.value)}
+          >
+            <option value="2">2D (00–99) = 100 LN</option>
+            <option value="3">3D (000–999) = 1.000 LN</option>
+            <option value="4">4D (0000–9999) = 10.000 LN</option>
           </select>
         </div>
         <div className="btnRow">
@@ -321,16 +344,18 @@ export default function Page() {
 
           {showLN && (
           <>
-          <Grid
-            top={top}
-            p1={p1}
-            p2={p2}
-            p3={p3}
-            p4={p4}
-            px={px}
-            selected={selected}
-            onToggle={toggleSel}
-          />
+          {lnMode === "2" && (
+            <Grid
+              top={top}
+              p1={p1}
+              p2={p2}
+              p3={p3}
+              p4={p4}
+              px={px}
+              selected={selected}
+              onToggle={toggleSel}
+            />
+          )}
 
           <SelectionPanel
             selected={selected}

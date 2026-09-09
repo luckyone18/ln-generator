@@ -40,6 +40,15 @@ export function allPairs() {
   return arr;
 }
 
+// All LN items for a mode: 2D "00".."99", 3D "000".."999", 4D "0000".."9999".
+export function allItems(mode = 2) {
+  if (mode === 2) return allPairs();
+  const total = 10 ** mode;
+  const arr = [];
+  for (let i = 0; i < total; i++) arr.push(String(i).padStart(mode, "0"));
+  return arr;
+}
+
 // Deterministic Fisher–Yates shuffle driven by rng().
 export function shuffled(arr, rng) {
   const a = arr.slice();
@@ -54,10 +63,16 @@ export function shuffled(arr, rng) {
 
 // Build the partition from the 4-digit input.
 // kressWanted: optional fixed number of Kress digits (3-7). null = acak (3-6).
-// Guarantees: top+p1+p2+p3+p4+px = 100, no duplicates, all "00".."99".
-export function generate(raw, kressWanted = null) {
+// lnMode: 2 (default, "00".."99" = 100 LN), 3 (000..999 = 1.000 LN),
+//         4 (0000..9999 = 10.000 LN). Any other value falls back to 2.
+// Guarantees: top+p1+p2+p3+p4+px = 10^lnMode, no duplicates, full coverage.
+export function generate(raw, kressWanted = null, lnMode = 2) {
   const parsed = parseInput(raw);
   if (!parsed) return { error: "Masukkan result yang valid" };
+
+  const modeRaw = Number(lnMode);
+  const mode = modeRaw === 3 || modeRaw === 4 ? modeRaw : 2;
+  const TOTAL = 10 ** mode; // 100 / 1000 / 10000
 
   const { a, b, c, d } = parsed;
 
@@ -111,25 +126,42 @@ export function generate(raw, kressWanted = null) {
     .sort((x, y) => x - y);
   const kress = kressDigits.map((x) => String(x)).join(" ");
 
-  // 3. Split sizes N1..N6. Constraints: total = 100, TOP 30-50,
-  //    p1 20-30, p2 5-15, p3 1-8, p4 1-6, px >= 1.
+  // 3. Split sizes N1..N6. mode 2 keeps the EXACT original draw sequence
+  //    (2D output identical forever). mode 3/4 use proportional splits with
+  //    safety clamps so every zone is >= its floor and px >= 1.
   function draw(min, max) {
     return min + Math.floor(rng() * (max - min + 1));
   }
-  const N1 = draw(30, 50); // TOP
-  const N2 = draw(20, 30); // patah 1
-  const remaining = 100 - N1 - N2; // 20..50
-  const N3 = draw(5, Math.min(15, remaining - 5));
-  const after3 = remaining - N3; // >= 5
-  const N4 = draw(1, Math.min(8, after3 - 4));
-  const after4 = after3 - N4; // >= 4
-  const N5 = draw(1, Math.min(6, after4 - 1));
-  const N6 = after4 - N5; // >= 1
+  let N1, N2, N3, N4, N5, N6;
+  if (mode === 2) {
+    N1 = draw(30, 50); // TOP
+    N2 = draw(20, 30); // patah 1
+    const remaining2 = 100 - N1 - N2; // 20..50
+    N3 = draw(5, Math.min(15, remaining2 - 5));
+    const after3a = remaining2 - N3; // >= 5
+    N4 = draw(1, Math.min(8, after3a - 4));
+    const after4a = after3a - N4; // >= 4
+    N5 = draw(1, Math.min(6, after4a - 1));
+    N6 = after4a - N5; // >= 1
+  } else {
+    const r = (pct) => Math.round((pct / 100) * TOTAL);
+    const lo4 = r(1); // floor patah 3 & 4 (10 / 100)
+    const hi4 = r(6);
+    N1 = draw(r(30), r(50)); // TOP: 300-500 / 3000-5000
+    N2 = draw(r(20), r(30)); // patah 1: 200-300 / 2000-3000
+    const rem = TOTAL - N1 - N2;
+    N3 = draw(r(5), Math.min(r(15), rem - lo4 - hi4 - 1));
+    const after3b = rem - N3;
+    N4 = draw(lo4, Math.max(lo4, Math.min(r(8), after3b - lo4 - 1)));
+    const after4b = after3b - N4;
+    N5 = draw(lo4, Math.max(lo4, Math.min(hi4, after4b - 1)));
+    N6 = after4b - N5; // >= 1
+  }
 
-  // 4. Working list: shuffle 00-99, then give pairs containing a kress
-  //    digit a deterministic boost (swapped toward the TOP zone) so the
-  //    kress visibly correlates with the TOP set.
-  const pool2 = shuffled(allPairs(), rng);
+  // 4. Working list: shuffle the pool (00-99 / 000-999 / 0000-9999), then
+  //    give items containing a kress digit a deterministic boost (swapped
+  //    toward the TOP zone) so the kress visibly correlates with the TOP set.
+  const pool2 = shuffled(allItems(mode), rng);
   const kressSet = new Set(kressDigits);
   for (let i = 0; i < pool2.length; i++) {
     const x = pool2[i];
@@ -152,5 +184,5 @@ export function generate(raw, kressWanted = null) {
   const p4 = pool2.slice(N1 + N2 + N3 + N4, N1 + N2 + N3 + N4 + N5);
   const px = pool2.slice(N1 + N2 + N3 + N4 + N5);
 
-  return { kress, top, p1, p2, p3, p4, px, inputDigits: parsed };
+  return { kress, mode, top, p1, p2, p3, p4, px, inputDigits: parsed };
 }
