@@ -152,6 +152,7 @@ export default function Page() {
   const [showLN, setShowLN] = useState(false); // LN hidden until "TAMPILKAN LN"
   const [tardalDigits, setTardalDigits] = useState(""); // auto-filled from kress
   const [tardalToken, setTardalToken] = useState(0); // naik tiap generate -> auto tardal
+  const [tardalOpen, setTardalOpen] = useState(false); // tardal terlihat setelah generate / tombol TARDAL
 
   function onChange(e) {
     setRaw(e.target.value.replace(/[^\d\n\r]/g, ""));
@@ -213,6 +214,7 @@ export default function Page() {
       }
       // Picu auto-generate tardal dari digit kress terbaru.
       setTardalToken((t) => t + 1);
+      setTardalOpen(true); // tardal menjadi bagian dari hasil generate
     }, 600);
   }
 
@@ -222,6 +224,7 @@ export default function Page() {
     setSelected(new Set());
     setKressOpt("");
     setShowLN(false);
+    setTardalOpen(false);
     setBusy(false);
   }
 
@@ -282,6 +285,14 @@ export default function Page() {
             disabled={busy}
           >
             RESET
+          </button>
+          <button
+            type="button"
+            className={"btn btnInfo" + (tardalOpen ? " btnInfoActive" : "")}
+            onClick={() => setTardalOpen((v) => !v)}
+            title="Tampilkan/sembunyikan Generator Tardal"
+          >
+            TARDAL
           </button>
         </div>
         {busy && <p className="loading">MEMPROSES ANALISA PREDIKSI...</p>}
@@ -394,11 +405,13 @@ export default function Page() {
         </section>
       )}
 
-      <TardalSection
-        digits={tardalDigits}
-        onDigitsChange={setTardalDigits}
-        autoToken={tardalToken}
-      />
+      {tardalOpen && (
+        <TardalSection
+          digits={tardalDigits}
+          onDigitsChange={setTardalDigits}
+          autoToken={tardalToken}
+        />
+      )}
 
       <footer className="foot">Generator LN · by LuckyOne18</footer>
     </main>
