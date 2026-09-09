@@ -134,6 +134,33 @@ check("mode default = 2D", generate("1234").top.length === generate("1234", null
 check("mode invalid fallback 2D", JSON.stringify(generate("1234", null, 9).top) === JSON.stringify(generate("1234", null, 2).top));
 check("mode 0/NaN fallback 2D", JSON.stringify(generate("1234", null, 0).top) === JSON.stringify(generate("1234", null, 2).top));
 
+// == Mode Twin / No Twin LN ==
+// Twin (default) = jalur lama PERSIS: output identik dengan tanpa arg ke-4
+check("twin default identik jalur lama", JSON.stringify(generate("1234", 3, 2, "1")) === JSON.stringify(generate("1234", 3, 2)));
+const NT = { 2: 90, 3: 720, 4: 5040 };
+for (const mode of [2, 3, 4]) {
+  const rN = generate("1234", 3, mode, "2");
+  const zones = [...rN.top, ...rN.p1, ...rN.p2, ...rN.p3, ...rN.p4, ...rN.px];
+  check(`noTwin ${mode}D: total pool = ${NT[mode]}`, zones.length === NT[mode], `(got ${zones.length})`);
+  check(`noTwin ${mode}D: tanpa duplikat`, new Set(zones).size === zones.length);
+  check(
+    `noTwin ${mode}D: semua item bebas kembar`,
+    zones.every((it) => new Set(it).size === it.length)
+  );
+  const rN2 = generate("1234", 3, mode, "2");
+  check(`noTwin ${mode}D: deterministik`, JSON.stringify(rN.top) === JSON.stringify(rN2.top));
+  // twin "selain 2" fallback ke jalur penuh (jumlah semua zona = pool penuh)
+  const rF = generate("1234", 3, mode, "x");
+  const zonesF = [...rF.top, ...rF.p1, ...rF.p2, ...rF.p3, ...rF.p4, ...rF.px];
+  check(`noTwin ${mode}D: twin != "2" fallback penuh`, zonesF.length === 10 ** mode, `(got ${zonesF.length})`);
+}
+check(
+  "noTwin 2D: semua angka kembar tidak ada di pool",
+  !["00","11","22","33","44","55","66","77","88","99"].some((t) =>
+    [...generate("7788", 3, 2, "2").top, ...generate("7788", 3, 2, "2").p1].includes(t)
+  )
+);
+
 function sig2(r) {
   return JSON.stringify([r.kress, r.top, r.p1, r.p2, r.p3, r.p4, r.px]);
 }

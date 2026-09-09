@@ -671,6 +671,9 @@ body {
   background: var(--red);
   opacity: 0.82;
 }
+.vSkip {
+  background: #adb5bd;
+}
 
 @media (max-width: 480px) {
   .cell {

@@ -65,14 +65,22 @@ export function shuffled(arr, rng) {
 // kressWanted: optional fixed number of Kress digits (3-7). null = acak (3-6).
 // lnMode: 2 (default, "00".."99" = 100 LN), 3 (000..999 = 1.000 LN),
 //         4 (0000..9999 = 10.000 LN). Any other value falls back to 2.
-// Guarantees: top+p1+p2+p3+p4+px = 10^lnMode, no duplicates, full coverage.
-export function generate(raw, kressWanted = null, lnMode = 2) {
+// lnTwin: "1" = Twin (default, pool penuh — jalur lama persis),
+//         "2" = No Twin (hanya item ber-digit berbeda: 2D 90, 3D 720,
+//         4D 5.040 item). Partisi & boost tetap identik, pool difilter.
+// Guarantees: top+p1+p2+p3+p4+px = pool size, no duplicates, full coverage.
+export function generate(raw, kressWanted = null, lnMode = 2, lnTwin = "1") {
   const parsed = parseInput(raw);
   if (!parsed) return { error: "Masukkan result yang valid" };
 
   const modeRaw = Number(lnMode);
   const mode = modeRaw === 3 || modeRaw === 4 ? modeRaw : 2;
-  const TOTAL = 10 ** mode; // 100 / 1000 / 10000
+  const noTwin = String(lnTwin) === "2";
+  // Pool size statis: Twin = 10^mode; No Twin = item digit berbeda
+  // (2D 90, 3D 10*9*8 = 720, 4D 10*9*8*7 = 5.040).
+  const TOTAL = noTwin
+    ? mode === 2 ? 90 : mode === 3 ? 720 : 5040
+    : 10 ** mode;
 
   const { a, b, c, d } = parsed;
 
@@ -133,7 +141,7 @@ export function generate(raw, kressWanted = null, lnMode = 2) {
     return min + Math.floor(rng() * (max - min + 1));
   }
   let N1, N2, N3, N4, N5, N6;
-  if (mode === 2) {
+  if (mode === 2 && !noTwin) {
     N1 = draw(30, 50); // TOP
     N2 = draw(20, 30); // patah 1
     const remaining2 = 100 - N1 - N2; // 20..50
@@ -161,7 +169,11 @@ export function generate(raw, kressWanted = null, lnMode = 2) {
   // 4. Working list: shuffle the pool (00-99 / 000-999 / 0000-9999), then
   //    give items containing a kress digit a deterministic boost (swapped
   //    toward the TOP zone) so the kress visibly correlates with the TOP set.
-  const pool2 = shuffled(allItems(mode), rng);
+  let pool2 = shuffled(allItems(mode), rng);
+  if (noTwin) {
+    // No Twin: buang item ber-digit kembar ("11", "474", "2022", ...).
+    pool2 = pool2.filter((it) => new Set(it).size === it.length);
+  }
   const kressSet = new Set(kressDigits);
   for (let i = 0; i < pool2.length; i++) {
     const x = pool2[i];

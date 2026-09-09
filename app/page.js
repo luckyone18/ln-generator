@@ -151,6 +151,7 @@ export default function Page() {
   const [selected, setSelected] = useState(() => new Set());
   const [kressOpt, setKressOpt] = useState(""); // "" = acak (3-6)
   const [lnMode, setLnMode] = useState("2"); // 2 = 2D (100 LN), 3 = 3D, 4 = 4D
+  const [lnTwin, setLnTwin] = useState("1"); // "1" = Twin (default), "2" = No Twin
   const [showLN, setShowLN] = useState(false); // LN hidden until "TAMPILKAN LN"
   const [tardalDigits, setTardalDigits] = useState(""); // auto-filled from kress
   const [tardalToken, setTardalToken] = useState(0); // naik tiap generate -> auto tardal
@@ -192,7 +193,8 @@ export default function Page() {
       const r = generate(
         raw,
         kressOpt === "" ? null : Number(kressOpt),
-        Number(lnMode)
+        Number(lnMode),
+        lnTwin
       );
       setBusy(false);
       if (r.error) {
@@ -200,9 +202,12 @@ export default function Page() {
         return;
       }
 
-      // Self-check: partition must total exactly 10^mode with no duplicates.
+      // Self-check: partition must total exactly the pool size with no dupes.
       const all = [...r.top, ...r.p1, ...r.p2, ...r.p3, ...r.p4, ...r.px];
-      const expected = 10 ** Number(lnMode);
+      const modeNum = Number(lnMode) === 3 || Number(lnMode) === 4 ? Number(lnMode) : 2;
+      const expected = lnTwin === "2"
+        ? modeNum === 2 ? 90 : modeNum === 3 ? 720 : 5040
+        : 10 ** modeNum;
       const hasDup = new Set(all).size !== all.length;
       if (all.length !== expected || hasDup) {
         console.warn(
@@ -232,6 +237,7 @@ export default function Page() {
     setSelected(new Set());
     setKressOpt("");
     setLnMode("2");
+    setLnTwin("1");
     setShowLN(false);
     setTardalOpen(false);
     setBusy(false);
@@ -291,6 +297,20 @@ export default function Page() {
             <option value="2">2D (00–99) = 100 LN</option>
             <option value="3">3D (000–999) = 1.000 LN</option>
             <option value="4">4D (0000–9999) = 10.000 LN</option>
+          </select>
+        </div>
+        <div className="optRow">
+          <label className="optLabel" htmlFor="lnTwin">
+            Mode Twin:
+          </label>
+          <select
+            id="lnTwin"
+            className="optSelect"
+            value={lnTwin}
+            onChange={(e) => setLnTwin(e.target.value)}
+          >
+            <option value="1">Twin (00–99) = pool penuh</option>
+            <option value="2">No Twin = tanpa angka kembar</option>
           </select>
         </div>
         <div className="btnRow">

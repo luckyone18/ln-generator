@@ -49,6 +49,7 @@ export function runBacktest(
   const lnModeRaw = Number(lnOpts?.mode);
   const ln = {
     mode: lnModeRaw === 3 || lnModeRaw === 4 ? lnModeRaw : 2,
+    twin: String(lnOpts?.twin) === "2" ? "2" : "1",
     enabled: lnOpts ? lnOpts.enabled !== false : true,
   };
 
@@ -62,11 +63,12 @@ export function runBacktest(
   let tSum = 0;
   let tMax = 0;
   const lZoneCounts = { top: 0, p1: 0, p2: 0, p3: 0, p4: 0, px: 0 };
+  let lTwinSkipped = 0;
 
   for (let i = 0; i < results.length - 1; i++) {
     const prev = results[i];
     const next = results[i + 1];
-    const r = generate(prev, kressWanted, ln.enabled ? ln.mode : 2);
+    const r = generate(prev, kressWanted, ln.enabled ? ln.mode : 2, ln.twin);
     if (r.error) continue;
 
     const kressDigits = String(r.kress || "")
@@ -90,15 +92,21 @@ export function runBacktest(
     // seluruh pool, setiap langkah pasti masuk salah satu zona — metrik
     // yang berarti adalah proporsi per zona (TOP vs Patah 1..>5).
     let lZone = null;
+    let lTwinSkip = false;
     if (ln.enabled) {
       const suffix = next.slice(-ln.mode);
-      if (r.top.includes(suffix)) lZone = "top";
+      const hasTwin = new Set(suffix).size !== suffix.length;
+      lTwinSkip = ln.twin === "2" && hasTwin;
+      if (lTwinSkip) {
+        // Ekor kembar di luar pool No Twin — langkah ini tak bisa kena.
+      } else if (r.top.includes(suffix)) lZone = "top";
       else if (r.p1.includes(suffix)) lZone = "p1";
       else if (r.p2.includes(suffix)) lZone = "p2";
       else if (r.p3.includes(suffix)) lZone = "p3";
       else if (r.p4.includes(suffix)) lZone = "p4";
       else if (r.px.includes(suffix)) lZone = "px";
       if (lZone) lZoneCounts[lZone]++;
+      if (lTwinSkip) lTwinSkipped++;
     }
 
     // Tardal: kombinasi dari digit kress dianggap "kena" bila kombinasi
@@ -144,6 +152,7 @@ export function runBacktest(
       inCount,
       hit,
       lZone,
+      lTwinSkip,
       tAvailable,
       tCombos,
       tCount,
@@ -198,6 +207,8 @@ export function runBacktest(
     trend,
     lnOpt: ln,
     lSteps: ln.enabled ? steps : 0,
+    lTested: ln.enabled ? steps - lTwinSkipped : 0,
+    lTwinSkipped,
     lZoneCounts,
     lZoneRates: ln.enabled && steps > 0
       ? Object.fromEntries(

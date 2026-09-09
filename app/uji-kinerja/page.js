@@ -24,6 +24,7 @@ export default function UjiKinerjaPage() {
   const [raw, setRaw] = useState("");
   const [kressOpt, setKressOpt] = useState("");
   const [lnMode, setLnMode] = useState("2");
+  const [lnTwin, setLnTwin] = useState("1");
   const [useLN, setUseLN] = useState(true);
   const [useTardal, setUseTardal] = useState(true);
   const [tardalType, setTardalType] = useState("4");
@@ -43,9 +44,9 @@ export default function UjiKinerjaPage() {
         splitter: tardalSplitter,
         enabled: useTardal,
       },
-      { mode: lnMode, enabled: useLN }
+      { mode: lnMode, twin: lnTwin, enabled: useLN }
     );
-  }, [ran, parsed, kressOpt, lnMode, useLN, useTardal, tardalType, tardalTwin, tardalSplitter]);
+  }, [ran, parsed, kressOpt, lnMode, lnTwin, useLN, useTardal, tardalType, tardalTwin, tardalSplitter]);
 
   function onChange(e) {
     setRaw(e.target.value.replace(/[^\d\n\r\s]/g, ""));
@@ -64,6 +65,7 @@ export default function UjiKinerjaPage() {
     setRaw("");
     setKressOpt("");
     setLnMode("2");
+    setLnTwin("1");
     setUseLN(true);
     setUseTardal(true);
     setTardalType("4");
@@ -132,6 +134,21 @@ export default function UjiKinerjaPage() {
             <option value="2">2D (00–99) = 100 LN</option>
             <option value="3">3D (000–999) = 1.000 LN</option>
             <option value="4">4D (0000–9999) = 10.000 LN</option>
+          </select>
+        </div>
+        <div className="optRow">
+          <label className="optLabel" htmlFor="bkLnTwin">
+            Mode Twin:
+          </label>
+          <select
+            id="bkLnTwin"
+            className="optSelect"
+            value={lnTwin}
+            onChange={(e) => setLnTwin(e.target.value)}
+            disabled={!useLN}
+          >
+            <option value="1">Twin (00–99) = pool penuh</option>
+            <option value="2">No Twin = tanpa angka kembar</option>
           </select>
         </div>
 
@@ -254,7 +271,9 @@ export default function UjiKinerjaPage() {
 
           {useLN && report.lSteps > 0 && (
             <>
-              <div className="sectionTitle">Kinerja LN ({report.lnOpt.mode}D)</div>
+              <div className="sectionTitle">
+                Kinerja LN ({report.lnOpt.mode}D{report.lnOpt.twin === "2" ? " · No Twin" : ""})
+              </div>
               <div className="statGrid">
                 {ZONES.map((z) => (
                   <div key={z.key} className={"statBox" + (z.key === "top" ? " statMain" : "")}>
@@ -278,14 +297,19 @@ export default function UjiKinerjaPage() {
                   {report.rows.map((row, i) => (
                     <div
                       key={i}
-                      className={"vCell " + (row.lZone === "top" ? "vHit" : "vMiss")}
-                      title={`#${i + 1} · prev=${row.prev} → next=${row.next} · kress=${row.kress} · ekor=${row.next.slice(-report.lnOpt.mode)} · zona=${zoneName(row.lZone)}`}
+                      className={"vCell " + (row.lTwinSkip ? "vSkip" : row.lZone === "top" ? "vHit" : "vMiss")}
+                      title={`#${i + 1} · prev=${row.prev} → next=${row.next} · kress=${row.kress} · ekor=${row.next.slice(-report.lnOpt.mode)} · ${row.lTwinSkip ? "ekor kembar — di luar pool No Twin" : `zona=${zoneName(row.lZone)}`}`}
                     >
                       {row.next.slice(-report.lnOpt.mode)}
                     </div>
                   ))}
                 </div>
               </div>
+              {report.lTwinSkipped > 0 && (
+                <p className="trendLine">
+                  {report.lTwinSkipped} langkah dilewati (ekor kembar di luar pool No Twin) dari {report.lSteps} langkah.
+                </p>
+              )}
             </>
           )}
 
