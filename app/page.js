@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { generate, parseInput } from "./algorithm";
+import TardalSection from "./TardalSection";
 
 const ALL_PAIRS = Array.from({ length: 100 }, (_, i) =>
   String(i).padStart(2, "0")
@@ -369,6 +370,8 @@ export default function Page() {
           )}
         </section>
       )}
+
+      <TardalSection />
 
       <footer className="foot">Generator LN · by LuckyOne18</footer>
     </main>

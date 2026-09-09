@@ -346,6 +346,79 @@ body {
   padding: 4px 0 2px;
 }
 
+/* ---------------- generator tardal ---------------- */
+.sectionTitle {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
+  color: var(--ink);
+}
+.tardalRow {
+  display: flex;
+  gap: 8px;
+}
+.tardalRow2 {
+  margin-top: 10px;
+}
+.tardalInput {
+  flex: 3;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 16px;
+  font-family: monospace;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+}
+.tardalInput:focus {
+  outline: 2px solid var(--blue);
+  outline-offset: -1px;
+}
+.tardalSel {
+  flex: 1;
+  min-width: 82px;
+  width: auto;
+}
+.tardalSelSm {
+  width: 64px;
+  flex: none;
+}
+.tardalBtn {
+  flex: 1;
+  padding: 8px 0;
+  font-size: 14px;
+}
+.btnInfo {
+  background: var(--teal);
+  color: #fff;
+}
+.btnInfo:hover {
+  background: #138496;
+}
+.btnRed {
+  background: var(--red);
+  color: #fff;
+}
+.btnRed:hover {
+  background: #c82333;
+}
+.tardalOut {
+  margin-top: 14px;
+}
+.tardalOutHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 6px;
+}
+.tardalLine {
+  font-weight: bold;
+  color: var(--red);
+  font-size: 13px;
+}
+
 .foot {
   margin-top: 26px;
   text-align: center;
