@@ -312,6 +312,28 @@ export default function UjiKinerjaPage() {
                 <div className="statSub">dalam satu langkah</div>
               </div>
             </div>
+                <div className="visualBlock">
+                  <div className="visualHead">
+                    <span>Visual per langkah (kombinasi tardal dari kress)</span>
+                    <span className="visualLegend">
+                      <span className="legendChip legendHit">hit</span>
+                      <span className="legendChip legendMiss">miss</span>
+                    </span>
+                  </div>
+                  <div className="visualGrid">
+                    {report.rows.map((row, idx) =>
+                      row.tAvailable ? (
+                        <div
+                          key={idx}
+                          className={"vCell " + (row.tCount > 0 ? "vHit" : "vMiss")}
+                          title={`#${idx + 1} · prev=${row.prev} → next=${row.next} · kress=${row.kress} · ${row.tCount}/${row.tCombos} kombinasi kena`}
+                        >
+                          {row.prev}
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                </div>
               ) : (
                 <p className="trendLine">
                   Tidak ada langkah tardal yang bisa diuji dengan setelan ini — coba pilih tipe lebih kecil (2D/3D) atau mode Twin.
