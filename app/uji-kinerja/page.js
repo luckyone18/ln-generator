@@ -293,6 +293,7 @@ export default function UjiKinerjaPage() {
             <>
               <div className="sectionTitle">Kinerja Tardal ({report.tOpt.type}D · {report.tOpt.twin === "1" ? "Twin" : "No Twin"})</div>
               {report.tSteps > 0 ? (
+            <>
             <div className="statGrid statGrid3">
               <div className="statBox statMain">
                 <div className="statVal">{pct(report.tHitRate)}</div>
@@ -334,6 +335,7 @@ export default function UjiKinerjaPage() {
                     )}
                   </div>
                 </div>
+            </>
               ) : (
                 <p className="trendLine">
                   Tidak ada langkah tardal yang bisa diuji dengan setelan ini — coba pilih tipe lebih kecil (2D/3D) atau mode Twin.
