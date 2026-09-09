@@ -413,7 +413,12 @@ export default function Page() {
         />
       )}
 
-      <footer className="foot">Generator LN · by LuckyOne18</footer>
+      <footer className="foot">
+        Generator LN · by LuckyOne18 ·{" "}
+        <a href="https://unlaproject.my.id" className="footLink">
+          unlaproject.my.id
+        </a>
+      </footer>
     </main>
   );
 }
