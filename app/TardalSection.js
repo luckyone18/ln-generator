@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { generateTardal } from "./tardal";
+import { useEffect, useState } from "react";
+import { autoTardal } from "./tardal";
 
-export default function TardalSection({ digits, onDigitsChange }) {
+export default function TardalSection({ digits, onDigitsChange, autoToken = 0 }) {
   const [type, setType] = useState("4"); // default 4D
   const [twin, setTwin] = useState("2"); // default No Twin
   const [splitter, setSplitter] = useState("*");
@@ -61,12 +61,19 @@ export default function TardalSection({ digits, onDigitsChange }) {
     : [];
   const show = output ? filtered.join(output.sep) : "";
 
+  // Auto-generate: setiap Kress Ai di-generate ulang (autoToken naik),
+  // tardal langsung dihitung dari digit terbaru dengan setelan saat ini.
+  useEffect(() => {
+    setOutput(autoTardal(digits, type, twin, splitter));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoToken]);
+
   return (
     <section className="inputCard" id="tardal">
       <h2 className="sectionTitle">GENERATOR TARDAL</h2>
       <p className="sectionHint">
-        Digit Kress Ai dari hasil generate di atas terisi otomatis — ubah atau
-        tambah angka sesuai keinginan.
+        Digit Kress Ai terisi otomatis &amp; langsung di-generate — ubah angka
+        atau setelan lalu klik Tardal untuk hitung ulang.
       </p>
 
       <form onSubmit={doGenerate} onReset={doReset}>

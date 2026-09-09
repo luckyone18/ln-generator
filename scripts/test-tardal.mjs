@@ -1,4 +1,4 @@
-import { generateTardal } from "../app/tardal.js";
+import { generateTardal, autoTardal } from "../app/tardal.js";
 
 let failures = 0;
 function check(name, cond, extra = "") {
@@ -91,5 +91,24 @@ check("unknown splitter -> default *", s3.result === "00*01*10*11");
 const s4 = generateTardal({ digits: "0123456789012", type: "2", twin: "1", splitter: "*" });
 check("15 digits with dupes -> dedupe to 10 -> 100 combos", s4.count === 100, `(got ${s4.count})`);
 
-console.log(`\n${failures === 0 ? "✅ ALL TARDAL TESTS PASSED" : `❌ ${failures} FAILURE(S)`}`);
+// autoTardal helper (auto-generate dari kress)
+console.log("autoTardal helper:");
+check("autoTardal('') -> null", autoTardal("") === null);
+check("autoTardal('abc') -> null", autoTardal("abc") === null);
+const a1 = autoTardal("0123");
+check(
+  "autoTardal('0123') 4D/NoTwin -> 24 LN",
+  a1 !== null && a1.count === 24 && a1.combos.length === 24
+);
+const a2 = autoTardal("01", "3", "1");
+check(
+  "autoTardal('01', 3D, Twin) -> 8 LN",
+  a2 !== null && a2.count === 8
+);
+check(
+  "autoTardal konsisten dgn generateTardal",
+  a1.result === generateTardal({ digits: "0123", type: "4", twin: "2", splitter: "*" }).result
+);
+
+console.log(failures === 0 ? "✅ ALL TARDAL TESTS PASSED" : `❌ ${failures} FAILURES`);
 process.exit(failures === 0 ? 0 : 1);

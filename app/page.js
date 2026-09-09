@@ -151,6 +151,7 @@ export default function Page() {
   const [kressOpt, setKressOpt] = useState(""); // "" = acak (3-6)
   const [showLN, setShowLN] = useState(false); // LN hidden until "TAMPILKAN LN"
   const [tardalDigits, setTardalDigits] = useState(""); // auto-filled from kress
+  const [tardalToken, setTardalToken] = useState(0); // naik tiap generate -> auto tardal
 
   function onChange(e) {
     setRaw(e.target.value.replace(/[^\d\n\r]/g, ""));
@@ -210,6 +211,8 @@ export default function Page() {
         // Isi otomatis kotak TARDAL dengan digit kress (tanpa spasi)
         setTardalDigits(r.kress.replace(/\s/g, ""));
       }
+      // Picu auto-generate tardal dari digit kress terbaru.
+      setTardalToken((t) => t + 1);
     }, 600);
   }
 
@@ -394,6 +397,7 @@ export default function Page() {
       <TardalSection
         digits={tardalDigits}
         onDigitsChange={setTardalDigits}
+        autoToken={tardalToken}
       />
 
       <footer className="foot">Generator LN · by LuckyOne18</footer>

@@ -63,3 +63,11 @@ export function generateTardal({ digits, type, twin, splitter }) {
 
   return { result: combos.join(sep), count: combos.length, combos, sep };
 }
+
+// Auto-generate helper (dipakai efek auto di TardalSection):
+// digits kosong -> null; input tidak valid -> null; selain itu hasil penuh.
+export function autoTardal(digits, type = "4", twin = "2", splitter = "*") {
+  if (!digits) return null;
+  const r = generateTardal({ digits, type, twin, splitter });
+  return r.error ? null : r;
+}
