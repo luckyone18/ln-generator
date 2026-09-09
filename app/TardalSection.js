@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { autoTardal } from "./tardal";
+import { autoTardal, generateTardal } from "./tardal";
 
 export default function TardalSection({ digits, onDigitsChange, autoToken = 0 }) {
   const [type, setType] = useState("4"); // default 4D
