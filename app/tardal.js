@@ -47,7 +47,7 @@ export function generateTardal({ digits, type, twin, splitter }) {
   } else {
     // Permutations without repetition (n!/(n-k)!).
     if (uniq.length < k) {
-      return { result: "", count: 0 };
+      return { result: "", count: 0, combos: [], sep };
     }
     const rec = (prefix, avail) => {
       if (prefix.length === k) {

@@ -81,12 +81,14 @@ body {
 }
 .btnRow {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 12px;
 }
 .btn {
-  flex: 1;
-  padding: 11px 0;
+  flex: 1 1 130px;
+  min-width: 0;
+  padding: 11px 10px;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.4px;
@@ -94,6 +96,12 @@ body {
   border-radius: 6px;
   cursor: pointer;
   transition: filter 0.15s, opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
 }
 .btn:disabled {
   opacity: 0.7;

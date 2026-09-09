@@ -9,13 +9,20 @@ const pct = (v) => (v == null ? "–" : v.toFixed(1) + "%");
 export default function UjiKinerjaPage() {
   const [raw, setRaw] = useState("");
   const [kressOpt, setKressOpt] = useState("");
+  const [tardalType, setTardalType] = useState("4");
+  const [tardalTwin, setTardalTwin] = useState("2");
+  const [tardalSplitter, setTardalSplitter] = useState("*");
   const [ran, setRan] = useState(false);
 
   const parsed = useMemo(() => parseResults(raw), [raw]);
   const report = useMemo(() => {
     if (!ran) return null;
-    return runBacktest(parsed.results, kressOpt === "" ? null : Number(kressOpt));
-  }, [ran, parsed, kressOpt]);
+    return runBacktest(parsed.results, kressOpt === "" ? null : Number(kressOpt), {
+      type: tardalType,
+      twin: tardalTwin,
+      splitter: tardalSplitter,
+    });
+  }, [ran, parsed, kressOpt, tardalType, tardalTwin, tardalSplitter]);
 
   function onChange(e) {
     setRaw(e.target.value.replace(/[^\d\n\r\s]/g, ""));
@@ -33,6 +40,9 @@ export default function UjiKinerjaPage() {
   function doReset() {
     setRaw("");
     setKressOpt("");
+    setTardalType("4");
+    setTardalTwin("2");
+    setTardalSplitter("*");
     setRan(false);
   }
 
@@ -82,6 +92,43 @@ export default function UjiKinerjaPage() {
             <option value="7">7 digit</option>
           </select>
         </div>
+
+        <div className="sectionTitle">Setelan Tardal</div>
+        <div className="tardalRow">
+          <select
+            aria-label="Tipe tardal"
+            className="tardalSelect"
+            value={tardalType}
+            onChange={(e) => setTardalType(e.target.value)}
+          >
+            <option value="2">2D</option>
+            <option value="3">3D</option>
+            <option value="4">4D</option>
+          </select>
+          <select
+            aria-label="Mode twin"
+            className="tardalSelect"
+            value={tardalTwin}
+            onChange={(e) => setTardalTwin(e.target.value)}
+          >
+            <option value="1">Twin</option>
+            <option value="2">No Twin</option>
+          </select>
+          <select
+            aria-label="Pemisah"
+            className="tardalSelect"
+            value={tardalSplitter}
+            onChange={(e) => setTardalSplitter(e.target.value)}
+          >
+            <option value="*">*</option>
+            <option value="#">#</option>
+            <option value=",">,</option>
+          </select>
+        </div>
+        <p className="sectionHint">
+          Kombinasi tardal dihitung dari digit Kress Ai tiap langkah, dianggap kena bila muncul pada posisi persis di result berikutnya.
+        </p>
+
         <div className="btnRow">
           <button type="button" className="btn btnGreen" onClick={doRun}>
             UJI KINERJA
@@ -136,6 +183,33 @@ export default function UjiKinerjaPage() {
               <div className="statLabel">Streak Terakhir</div>
             </div>
           </div>
+
+          <div className="sectionTitle">Kinerja Tardal ({report.tOpt.type}D · {report.tOpt.twin === "1" ? "Twin" : "No Twin"})</div>
+          {report.tSteps > 0 ? (
+            <div className="statGrid statGrid3">
+              <div className="statBox statMain">
+                <div className="statVal">{pct(report.tHitRate)}</div>
+                <div className="statLabel">Tardal Hit Rate</div>
+                <div className="statSub">
+                  {report.tHits} langkah kena dari {report.tSteps} teruji
+                </div>
+              </div>
+              <div className="statBox">
+                <div className="statVal">{report.tAvg.toFixed(2)}</div>
+                <div className="statLabel">Rata-rata Kombinasi Kena</div>
+                <div className="statSub">per langkah</div>
+              </div>
+              <div className="statBox">
+                <div className="statVal">{report.tMax}</div>
+                <div className="statLabel">Kombinasi Kena Terbanyak</div>
+                <div className="statSub">dalam satu langkah</div>
+              </div>
+            </div>
+          ) : (
+            <p className="trendLine">
+              Tidak ada langkah tardal yang bisa diuji dengan setelan ini — coba pilih tipe lebih kecil (2D/3D) atau mode Twin.
+            </p>
+          )}
 
           {report.trend && (
             <p className="trendLine">

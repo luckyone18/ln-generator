@@ -14,6 +14,7 @@
 /* ------------------------------------------------------------------ */
 
 import { generate } from "./algorithm.js";
+import { generateTardal } from "./tardal.js";
 
 // Parse bebas: ambil semua digit, potong per 4 (data user selalu grup 4 digit).
 // Sisa digit < 4 di akhir dibuang dan dihitung sebagai trailing terpotong.
@@ -28,16 +29,26 @@ export function parseResults(raw) {
   return { results, leftover };
 }
 
-export function runBacktest(results, kressWanted = null) {
+export function runBacktest(results, kressWanted = null, tardalOpts = null) {
   if (!Array.isArray(results) || results.length < 2) {
     return { error: "Minimal 2 result untuk menguji kinerja" };
   }
+
+  const tOpt = {
+    type: String(tardalOpts?.type || "4"),
+    twin: String(tardalOpts?.twin || "2"),
+    splitter: String(tardalOpts?.splitter || "*"),
+  };
 
   const rows = [];
   let hits = 0;
   let sumIn = 0;
   let sumK = 0;
   let atLeastOne = 0;
+  let tSteps = 0;
+  let tHits = 0;
+  let tSum = 0;
+  let tMax = 0;
 
   for (let i = 0; i < results.length - 1; i++) {
     const prev = results[i];
@@ -61,6 +72,36 @@ export function runBacktest(results, kressWanted = null) {
     sumIn += inCount;
     sumK += kressDigits.length;
 
+    // Tardal: kombinasi dari digit kress dianggap "kena" bila kombinasi
+    // muncul di POSISI PERSIS yang sama pada result berikutnya
+    // (kombinasi tardal diurutkan sesuai urutan digit input).
+    // Langkah tanpa kombinasi (mis. 4D No Twin dgn kress 3 digit) tidak
+    // diikutkan dalam statistik tardal.
+    const t = generateTardal({
+      digits: kressDigits.join(""),
+      type: tOpt.type,
+      twin: tOpt.twin,
+      splitter: tOpt.splitter,
+    });
+    const tAvailable = !!t && !t.error && t.combos.length > 0;
+    let tCount = 0;
+    if (tAvailable) {
+      tSteps++;
+      for (const combo of t.combos) {
+        let ok = true;
+        for (let p = 0; p < combo.length; p++) {
+          if (next[p] !== combo[p]) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) tCount++;
+      }
+      if (tCount > 0) tHits++;
+      tSum += tCount;
+      if (tCount > tMax) tMax = tCount;
+    }
+
     rows.push({
       prev,
       next,
@@ -68,6 +109,9 @@ export function runBacktest(results, kressWanted = null) {
       kressCount: kressDigits.length,
       inCount,
       hit,
+      tAvailable,
+      tCombos: tAvailable ? t.combos.length : 0,
+      tCount,
     });
   }
 
@@ -117,6 +161,12 @@ export function runBacktest(results, kressWanted = null) {
     longestMiss,
     currentStreak,
     trend,
+    tOpt,
+    tSteps,
+    tHits,
+    tHitRate: tSteps > 0 ? (tHits / tSteps) * 100 : null,
+    tAvg: tSteps > 0 ? tSum / tSteps : 0,
+    tMax,
     rows,
   };
 }

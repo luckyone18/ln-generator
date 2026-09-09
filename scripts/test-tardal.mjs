@@ -110,5 +110,11 @@ check(
   a1.result === generateTardal({ digits: "0123", type: "4", twin: "2", splitter: "*" }).result
 );
 
+console.log("== generateTardal return shape ==");
+const insuf = generateTardal({ digits: "01", type: "4", twin: "2", splitter: "*" });
+check("digit < type NoTwin -> count 0", insuf.count === 0);
+check("digit < type NoTwin -> combos [] (bukan undefined)", Array.isArray(insuf.combos) && insuf.combos.length === 0);
+check("digit < type NoTwin -> sep ada", insuf.sep === "*");
+
 console.log(failures === 0 ? "✅ ALL TARDAL TESTS PASSED" : `❌ ${failures} FAILURES`);
 process.exit(failures === 0 ? 0 : 1);
