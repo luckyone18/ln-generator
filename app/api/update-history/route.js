@@ -42,8 +42,9 @@ export async function POST(req) {
       const { rows, label } = await fetchPaito(pool, 120);
       const key = `${BLOB_PREFIX}/history/${pool}.json`;
       const old = await readJson(key, [], token);
+      const oldArr = Array.isArray(old) ? old : old?.rows || [];
       const history = mergeHistory(old, rows);
-      const added = history.length - old.length;
+      const added = history.length - oldArr.length;
 
       await writeJson(
         key,
