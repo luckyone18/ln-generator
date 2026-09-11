@@ -21,7 +21,9 @@ export function buildReport(history) {
 }
 
 export function mergeHistory(oldRows, newRows) {
-  const map = new Map((oldRows || []).map((r) => [r.date, r]));
+  // Terima dua bentuk: array legacy ATAU dokumen {rows: [...]} (hasil run sebelumnya).
+  const oldArr = Array.isArray(oldRows) ? oldRows : oldRows?.rows || [];
+  const map = new Map(oldArr.map((r) => [r.date, r]));
   for (const r of newRows || []) map.set(r.date, r); // new wins
   return [...map.values()]
     .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && /^\d{4}$/.test(r.result))

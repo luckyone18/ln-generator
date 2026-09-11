@@ -61,7 +61,11 @@ export async function POST(req) {
       const last = history[history.length - 1] || null;
       results.push({ pool, label, total: history.length, added, last });
     } catch (e) {
-      results.push({ pool, error: e.message });
+      results.push({
+        pool,
+        error: e.message,
+        stack: String(e.stack || "").split("\n").slice(0, 4),
+      });
     }
   }
 
