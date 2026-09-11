@@ -107,8 +107,8 @@ export default function RiwayatPage() {
             <div className="statBox">
               <div className="statLabel">Streak</div>
               <div className="statVal">
-                {data.report?.currentStreak !== undefined
-                  ? data.report.currentStreak
+                {data.report?.currentStreak?.len !== undefined
+                  ? `${data.report.currentStreak.len}x ${data.report.currentStreak.type === "hit" ? "HIT" : "MISS"}`
                   : "-"}
               </div>
               <div className="statSub">
