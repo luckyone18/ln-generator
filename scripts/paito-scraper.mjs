@@ -15,7 +15,7 @@ export const POOLS = {
 // Parse semua baris {date: "YYYY-MM-DD", result: "DDDD"} dari HTML paito.
 export function parsePaito(html) {
   const rows = [];
-  const re = /<td class="reside tgl">(\d{2})-(\d{2})-(\d{4})<\/td>((?:<td class="residex?>\d<\/td>){4,})/g;
+  const re = /<td class="reside tgl">(\d{2})-(\d{2})-(\d{4})<\/td>((?:<td class="residex?">\d<\/td>){4,})/g;
   let m;
   while ((m = re.exec(html)) !== null) {
     const [, dd, mm, yyyy, cells] = m;
