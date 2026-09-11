@@ -341,6 +341,9 @@ export default function Page() {
           <Link href="/uji-kinerja" className="btn btnBlue">
             UJI KINERJA
           </Link>
+          <Link href="/riwayat" className="btn btnBlue">
+            RIWAYAT
+          </Link>
         </div>
         {busy && <p className="loading">MEMPROSES ANALISA PREDIKSI...</p>}
       </section>

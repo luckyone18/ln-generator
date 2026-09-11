@@ -683,3 +683,39 @@ body {
     font-size: 22px;
   }
 }
+
+/* ===== Riwayat (auto-backtest history) ===== */
+.poolRow { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 18px; }
+.poolBtn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 18px; border-radius: 10px; border: 1px solid #d4d4d8;
+  background: #fff; cursor: pointer; font-weight: 600; color: #18181b;
+}
+.poolBtn .poolDraw { font-size: 11px; font-weight: 400; color: #71717a; }
+.poolBtnActive { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+.statGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0 18px; }
+.zoneWrap { margin: 14px 0; }
+.zoneRow { display: flex; gap: 8px; flex-wrap: wrap; }
+.zoneChip {
+  display: flex; flex-direction: column; align-items: center; padding: 8px 12px;
+  border-radius: 8px; background: #fafafa; border: 1px solid #e4e4e7; min-width: 72px;
+}
+.zoneName { font-size: 11px; color: #71717a; }
+.zonePct { font-weight: 700; color: #18181b; }
+.tableWrap { overflow-x: auto; border: 1px solid #e4e4e7; border-radius: 10px; }
+.histTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.histTable th, .histTable td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #f4f4f5; }
+.histTable th { background: #fafafa; color: #52525b; font-weight: 600; }
+.mono { font-family: ui-monospace, monospace; letter-spacing: 1px; }
+.strong { font-weight: 700; }
+.zoneBadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.zone-top { background: #dcfce7; color: #166534; }
+.zone-p1 { background: #dbeafe; color: #1e40af; }
+.zone-p2 { background: #fef9c3; color: #854d0e; }
+.zone-p3 { background: #ffedd5; color: #9a3412; }
+.zone-p4 { background: #fee2e2; color: #991b1b; }
+.zone-px { background: #f4f4f5; color: #52525b; }
+.emptyBox { padding: 18px; border: 1px dashed #d4d4d8; border-radius: 10px; color: #52525b; margin: 14px 0; }
+.navRow { display: flex; gap: 10px; margin-top: 18px; }
+.muted { color: #71717a; }
+.errorText { color: #b91c1c; }
