@@ -6,6 +6,7 @@ import Link from "next/link";
 const POOLS = [
   { key: "singapore", label: "Singapore", draw: "17:40 WIB" },
   { key: "sydney", label: "Sydney", draw: "13:50 WIB" },
+  { key: "taiwan", label: "Taiwan", draw: "20:30 WIB" },
   { key: "hongkong", label: "Hongkong", draw: "22:30 WIB" },
 ];
 

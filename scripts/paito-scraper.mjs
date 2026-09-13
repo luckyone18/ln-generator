@@ -9,6 +9,7 @@ const UA =
 export const POOLS = {
   singapore: { slug: "paito-harian-singapore", label: "Singapore", drawTimeWIB: "17:40" },
   sydney: { slug: "paito-harian-sydney-pools", label: "Sydney", drawTimeWIB: "13:50" },
+  taiwan: { slug: "paito-harian-taiwan", label: "Taiwan", drawTimeWIB: "20:30" },
   hongkong: { slug: "paito-harian-hongkong-pools", label: "Hongkong", drawTimeWIB: "22:30" },
 };
 
