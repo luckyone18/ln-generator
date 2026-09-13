@@ -1,5 +1,6 @@
 // ── Trend Gabungan & Analisa Tren Koleksi (fitur orisinal LN Generator) ──
-// A. Tren performa gabungan per draw (berapa rumus kena vs patah)
+// A. Coverage angka main gabungan per draw — patokan = angka 4D result:
+// berapa posisi digit result yang tertutup union angka main. 4/4 = 100%.
 // B. Hot/Cold digit (ranking frekuensi digit dari semua ai)
 // C. Streak & statistik patah per rumus
 
@@ -29,39 +30,71 @@ export function parseTrek(log) {
   return out;
 }
 
-// A. Tren per draw: gabungkan semua trek terurut tua→baru.
-// Setiap entry: { res, hitCount, missCount, predictCount, total, missIdx }
-// missIdx = index rumus (urutan items) yang patah pada draw tsb.
+// A. Coverage per draw: patokan = angka 4D result.
+// Konvensi trek: AI pada baris i memprediksi result baris i+1, jadi
+// angka main yang dinilai utk result R = AI pada baris tepat sebelum R.
+// Gabungan (union) angka main semua rumus → berapa posisi digit R yang
+// tertutup. 4/4 digit = 100%.
 export function buildDrawTrend(items) {
-  const draws = new Map(); // res -> { res, hits, total, missIdx }
+  const draws = new Map(); // res -> { res, aiSets: [Set digit, ...] }
   const order = [];
-  items.forEach((item, itemIdx) => {
+  items.forEach((item) => {
     const trek = parseTrek(item.trek_log);
-    for (const row of trek) {
-      if (row.hit === null) continue; // baris prediksi tidak dinilai
-      if (!draws.has(row.res)) {
-        draws.set(row.res, { res: row.res, hits: 0, total: 0, missIdx: [] });
-        order.push(row.res);
+    const perRes = new Map(); // res -> Set digit AI (kemunculan terakhir menang)
+    for (let i = 0; i < trek.length - 1; i++) {
+      const digits = new Set(
+        String(trek[i].seq)
+          .replace(/\[[^\]]*\]/g, "") // buang tag [h]..[/h], [m]ai[/m]
+          .replace(/[^0-9]/g, "")
+          .split("")
+          .filter((x) => x !== "")
+      );
+      if (digits.size === 0) continue;
+      perRes.set(trek[i + 1].res, digits);
+    }
+    for (const [res, digits] of perRes) {
+      if (!draws.has(res)) {
+        draws.set(res, { res, aiSets: [] });
+        order.push(res);
       }
-      const d = draws.get(row.res);
-      d.hits += row.hit ? 1 : 0;
-      d.total += 1;
-      if (!row.hit) d.missIdx.push(itemIdx);
+      draws.get(res).aiSets.push(digits);
     }
   });
-  // Urutkan tua→baru sesuai kemunculan terakhir (trek dianggap kronologis);
-  // kalau beda rumus beda window, pakai urutan kemunculan pertama.
   return order.map((res) => {
     const d = draws.get(res);
+    const covered = new Set();
+    d.aiSets.forEach((s) => s.forEach((x) => covered.add(x)));
+    const digits = String(res).split("");
+    const miss = digits.filter((x) => !covered.has(x));
     return {
       res,
-      hitCount: d.hits,
-      missCount: d.total - d.hits,
-      total: d.total,
-      missIdx: d.missIdx,
-      pct: d.total ? Math.round((d.hits / d.total) * 100) : 0,
+      hits: digits.length - miss.length,
+      total: digits.length,
+      missDigits: [...new Set(miss)],
+      rumusCount: d.aiSets.length,
+      pct: digits.length ? Math.round(((digits.length - miss.length) / digits.length) * 100) : 0,
     };
   });
+}
+
+// Union angka main semua rumus untuk draw BERIKUTNYA (baris prediksi '?').
+export function buildNextDrawAI(items) {
+  const covered = new Set();
+  let n = 0;
+  items.forEach((item) => {
+    const trek = parseTrek(item.trek_log);
+    const last = trek[trek.length - 1];
+    if (!last) return;
+    const digits = String(last.seq)
+      .replace(/\[[^\]]*\]/g, "")
+      .replace(/[^0-9]/g, "")
+      .split("")
+      .filter((x) => x !== "");
+    if (!digits.length) return;
+    n++;
+    digits.forEach((x) => covered.add(x));
+  });
+  return { digits: [...covered].sort().join(""), n };
 }
 
 // B. Hot/Cold digit: ranking frekuensi digit dari semua ai koleksi.
@@ -142,23 +175,28 @@ export function renderTrend(items) {
   });
   L.push("");
 
-  // ── A. Tren per draw ──
-  L.push("── A. PERFORMA GABUNGAN PER DRAW ──");
+  // ── A. Coverage per draw ──
+  L.push("── A. COVERAGE ANGKA MAIN PER DRAW ──");
+  L.push("(patokan = 4 digit result; angka main = union AI semua rumus)", "");
   if (drawTrend.length === 0) {
     L.push("(tidak ada data trek)");
   } else {
-    // tampil max 20 draw terbaru
     const show = drawTrend.slice(-20);
     show.forEach((d) => {
-      const icon = d.pct >= 70 ? "🔥" : d.pct >= 40 ? "➖" : "❄️";
-      const who = d.missIdx.length ? ` — patah: ${d.missIdx.map((i) => `(${i + 1})`).join(" ")}` : "";
-      L.push(`${d.res} : ${d.hitCount}/${d.total} kena${who} ${bar(d.pct)} ${d.pct}% ${icon}`);
+      const icon = d.pct === 100 ? "🔥" : d.pct >= 75 ? "➖" : "❄️";
+      const miss = d.missDigits.length ? ` — lepas: ${d.missDigits.join("")}` : "";
+      L.push(`${d.res} : ${d.hits}/${d.total} digit ${miss} ${bar(d.pct)} ${d.pct}% ${icon}`);
     });
     const avg = drawTrend.length
-      ? Math.round((drawTrend.reduce((a, d) => a + d.pct, 0) / drawTrend.length))
+      ? Math.round((drawTrend.reduce((a, d) => a + d.pct, 0) / drawTrend.length) * 10) / 10
       : 0;
     L.push("");
-    L.push(`Rata-rata hit rate koleksi: ${avg}% ${avg >= 70 ? "🔥 PANAS" : avg >= 40 ? "➖ NORMAL" : "❄️ DINGIN"}`);
+    L.push(`Rata-rata coverage koleksi: ${avg}% ${avg === 100 ? "🔥 SEMPURNA" : avg >= 75 ? "➖ KUAT" : "❄️ LOLOSAN"}`);
+    L.push("");
+    const next = buildNextDrawAI(items);
+    if (next.digits) {
+      L.push(`Angka main gabungan utk draw berikutnya: ${next.digits} (dari ${next.n} rumus)`);
+    }
   }
   L.push("");
 
