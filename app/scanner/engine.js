@@ -37,11 +37,11 @@ export function buildState(market, opts) {
     days: days ? [days] : [],
     patah: 0, // evaluasi sendiri dari baris x
     fCol,
-    k1: formula.k1, m1: formula.m1, s1: formula.s1,
-    op1: formula.op1,
-    k2: formula.k2, m2: formula.m2, s2: formula.s2,
-    op2: formula.op2,
-    k3: formula.k3, m3: formula.m3, s3: formula.s3,
+    k1: formula.k1 ?? formula.k, m1: formula.m1 ?? formula.m, s1: (formula.s1 ?? formula.s) || "off",
+    op1: formula.op1 || "+",
+    k2: formula.k2, m2: formula.m2, s2: formula.s2 || "off",
+    op2: formula.op2 || "+",
+    k3: formula.k3, m3: formula.m3, s3: formula.s3 || "off",
     sf: formula.sf || "off",
     hideEmpty: true,
     targetD: 0,
@@ -79,7 +79,10 @@ export function randomFormula(rand = Math.random) {
 export function formulaKey(f) {
   const part = (k, m, s) =>
     k >= 0 ? `${KEY_NAMES[k] || "?"}${m > 1 ? m : ""}${s && s !== "off" ? s : ""}` : "";
-  let r = part(f.k1, f.m1, f.s1);
+  const k1 = f.k1 ?? f.k;
+  const m1 = f.m1 ?? f.m;
+  const s1 = f.s1 ?? f.s;
+  let r = part(k1, m1, s1);
   if (f.k2 >= 0) r += (f.op1 || "+") + part(f.k2, f.m2, f.s2);
   if (f.k3 >= 0) r += (f.op2 || "+") + part(f.k3, f.m3, f.s3);
   if (f.sf && f.sf !== "off") r += "." + f.sf;

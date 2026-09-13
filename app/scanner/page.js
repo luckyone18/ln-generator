@@ -293,6 +293,10 @@ export default function ScannerPage() {
 
         if (resp && resp.rows) {
           const activeCols = resp.activeCols || [];
+          // ENFORCE: jumlah digit prediksi harus = target DIGIT (spt scanner asli targetD)
+          if (activeCols.length !== digit) {
+            continue; // formula menghasilkan N digit lain → ditolak
+          }
           const evalRes = evaluateRows(resp.rows, activeCols, fCol, curMaxPatah);
           if (evalRes) {
             const sparePatah = patah - evalRes.patah;
