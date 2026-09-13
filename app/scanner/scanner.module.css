@@ -371,7 +371,131 @@
   border: 1px solid #f5d0fe;
 }
 
-/* ── Tambah rumus manual ───────────────────────────────── */
+/* ── Bank Rumus (sync bar) ─────────────────────────────── */
+.syncBox {
+  margin-top: 0.75rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.syncLabel {
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #0369a1;
+  margin-bottom: 0.5rem;
+}
+
+.syncBadge {
+  font-weight: 600;
+  font-size: 0.68rem;
+  color: #0284c7;
+  background: #e0f2fe;
+  border-radius: 4px;
+  padding: 0.08rem 0.4rem;
+  margin-left: 0.35rem;
+}
+
+.syncRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.syncCodeLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.syncCode {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #0d9488;
+  background: #f0fdfa;
+  border: 1px dashed #99f6e4;
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+}
+
+.btnSyncCopy {
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #0d9488;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.btnSyncCopy:hover {
+  background: #0d9488;
+  color: #ffffff;
+}
+
+.claimInput {
+  flex: 1;
+  min-width: 110px;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.78rem;
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.btnClaim {
+  border: 1px solid #bae6fd;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 0.72rem;
+  padding: 0.3rem 0.6rem;
+}
+
+.btnClaim:hover:not(:disabled) {
+  background: #0369a1;
+  color: #ffffff;
+}
+
+.btnClaim:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.claimMsg {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #075985;
+  margin-top: 0.3rem;
+}
+
+.syncHint {
+  font-size: 0.68rem;
+  color: #64748b;
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+
+.tierSelect {
+  border: 1px solid #e9d5ff;
+  background: #faf5ff;
+  color: #7e22ce;
+  font-weight: 700;
+  font-size: 0.72rem;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+}
+
 .manualAddBox {
   background: #f8fafc;
   border: 1px dashed #cbd5e1;

@@ -43,9 +43,12 @@ export default function RumusOtomatisPage() {
   const [copyStatus, setCopyStatus] = useState("");
 
   const lastStateRef = useRef(null);
+  const fetchIdRef = useRef(0);
+  const retryTimerRef = useRef(null);
 
   const triggerCalculate = useCallback(
     async (overrideState = null) => {
+      const myId = ++fetchIdRef.current;
       setLoading(true);
 
       const v1 = decodeAcc(overrideState ? overrideState.acc1 : acc1);
@@ -99,8 +102,34 @@ export default function RumusOtomatisPage() {
         });
         const data = await res.json();
 
+        // race guard: hanya update tampilan kalau ini request terbaru
+        if (myId !== fetchIdRef.current) return;
+
         if (!data || !data.rows) {
-          setOutputHtml("Gagal memuat baris data dari API.");
+          setOutputHtml(
+            (data && data.message
+              ? "Server: " + data.message
+              : "Gagal memuat baris data dari API.") +
+              " — server sedang sibuk, mencoba ulang otomatis..."
+          );
+          // auto-retry 1x setelah 2.5s (kalau tidak ada request baru)
+          if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = setTimeout(() => {
+            if (myId === fetchIdRef.current) triggerCalculate(overrideState);
+          }, 2500);
+          setLoading(false);
+          return;
+        }
+
+        if (data.rows.length === 0) {
+          // data valid tapi kosong: kemungkinan filter hari tanpa undian
+          setOutputHtml(
+            `<div style="color:#b45309; font-weight:700; padding:0.5rem 0;">` +
+              `⚠ Tidak ada data untuk pasaran ini${curDay ? ` hari ${curDay}` : ""}. ` +
+              `Kemungkinan pasaran tidak mengeluarkan undian pada hari tersebut ` +
+              `(mis. Singapore tidak ada undian hari Selasa). Coba pilih hari lain atau "Harian".</div>`
+          );
+          setOutputCode("");
           setLoading(false);
           return;
         }
@@ -242,7 +271,10 @@ export default function RumusOtomatisPage() {
   );
 
   useEffect(() => {
-    triggerCalculate();
+    // debounce 400ms: hindari fetch storm saat ubah dropdown beruntun
+    // (mis. LOAD kode menset ~10 state sekaligus)
+    const t = setTimeout(() => triggerCalculate(), 400);
+    return () => clearTimeout(t);
   }, [
     market,
     day,

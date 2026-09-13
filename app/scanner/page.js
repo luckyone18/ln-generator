@@ -76,8 +76,87 @@ export default function ScannerPage() {
   const [manualBusy, setManualBusy] = useState(false);
   const [manualMsg, setManualMsg] = useState("");
 
+  // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
+  const [showTiers, setShowTiers] = useState("top"); // top | cad12 | all
+  const [deviceId, setDeviceId] = useState("");
+  const [syncCode, setSyncCode] = useState("");
+  const [syncState, setSyncState] = useState("idle"); // idle | syncing | saved | error
+  const [claimCode, setClaimCode] = useState("");
+  const [claimBusy, setClaimBusy] = useState(false);
+  const [claimMsg, setClaimMsg] = useState("");
+
   const scanRef = useRef({ active: false, items: [], iter: 0 });
   const localModeRef = useRef(false);
+  const bankInitRef = useRef(false);
+
+  const persistCollection = useCallback((next, thisDeviceId) => {
+    try {
+      localStorage.setItem("ln_sk_saved", JSON.stringify(next));
+    } catch {}
+    if (!thisDeviceId) return;
+    setSyncState("syncing");
+    fetch("/api/scanner-collection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId: thisDeviceId, items: next }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && d.ok) {
+          setSyncState("saved");
+          if (d.syncCode) setSyncCode(d.syncCode);
+        } else {
+          setSyncState("error");
+        }
+      })
+      .catch(() => setSyncState("error"));
+  }, []);
+
+  // Restore koleksi saat load: localStorage dulu (instan), lalu server (paling baru).
+  useEffect(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem("ln_sk_saved") || "[]");
+      if (Array.isArray(local) && local.length) setSavedItems(local);
+    } catch {}
+
+    let did = "";
+    try {
+      did = localStorage.getItem("ln_sk_device") || "";
+      if (!did) {
+        did =
+          (crypto.randomUUID && crypto.randomUUID().replace(/-/g, "").slice(0, 24)) ||
+          ("d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+        localStorage.setItem("ln_sk_device", did);
+      }
+    } catch {
+      did = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    }
+    setDeviceId(did);
+
+    fetch(`/api/scanner-collection?deviceId=${encodeURIComponent(did)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (bankInitRef.current) return;
+        bankInitRef.current = true;
+        if (d && Array.isArray(d.items) && d.syncCode) {
+          setSyncCode(d.syncCode);
+          const serverCount = d.items.length;
+          const localCount = JSON.parse(localStorage.getItem("ln_sk_saved") || "[]").length;
+          if (serverCount > localCount) {
+            setSavedItems(d.items);
+            try {
+              localStorage.setItem("ln_sk_saved", JSON.stringify(d.items));
+            } catch {}
+          } else if (serverCount < localCount) {
+            persistCollection(JSON.parse(localStorage.getItem("ln_sk_saved") || "[]"), did);
+          }
+        } else if (d && d.syncCode) {
+          setSyncCode(d.syncCode);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const doFinish = useCallback((reason) => {
     scanRef.current.active = false;
@@ -372,9 +451,7 @@ export default function ScannerPage() {
     if (savedItems.some((s) => s.code === code)) return;
     const next = [...savedItems, { ...item, savedAt: Date.now() }];
     setSavedItems(next);
-    try {
-      localStorage.setItem("ln_sk_saved", JSON.stringify(next));
-    } catch {}
+    persistCollection(next, deviceId);
   };
 
   const saveAllFound = () => {
@@ -389,9 +466,7 @@ export default function ScannerPage() {
       }
     });
     setSavedItems(next);
-    try {
-      localStorage.setItem("ln_sk_saved", JSON.stringify(next));
-    } catch {}
+    persistCollection(next, deviceId);
     setFoundItems([]);
     scanRef.current.items = [];
     try {
@@ -402,9 +477,7 @@ export default function ScannerPage() {
   const deleteSaved = (code) => {
     const next = savedItems.filter((s) => s.code !== code);
     setSavedItems(next);
-    try {
-      localStorage.setItem("ln_sk_saved", JSON.stringify(next));
-    } catch {}
+    persistCollection(next, deviceId);
   };
 
   const clearResults = () => {
@@ -444,9 +517,7 @@ export default function ScannerPage() {
     setSavedItems(next);
     setCheckedCodes([]);
     setSelectAll(false);
-    try {
-      localStorage.setItem("ln_sk_saved", JSON.stringify(next));
-    } catch {}
+    persistCollection(next, deviceId);
   };
 
   // ── Rekap Rumus (dari formula tercentang) ─────────────────────────
@@ -490,7 +561,46 @@ export default function ScannerPage() {
       return;
     }
     const impl = buildRekap4D(items);
-    setTrekLog(renderRekap4D(impl));
+    setTrekLog(renderRekap4D(impl, showTiers));
+  };
+
+  // ── Claim koleksi via kode sync (pindah device) ───────────────────
+  const doClaim = async () => {
+    const raw = claimCode.trim().toUpperCase();
+    setClaimMsg("");
+    if (!/^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(raw)) {
+      setClaimMsg("Format kode: XXXX-XXXX (huruf & angka tanpa I/O/0/1)");
+      return;
+    }
+    setClaimBusy(true);
+    try {
+      const res = await fetch(`/api/scanner-collection?code=${encodeURIComponent(raw)}`);
+      const data = await res.json();
+      if (!res.ok || !data || !Array.isArray(data.items)) {
+        setClaimMsg(data?.error || "Kode sync tidak ditemukan.");
+        return;
+      }
+      const merged = [...data.items];
+      const current = JSON.parse(localStorage.getItem("ln_sk_saved") || "[]");
+      current.forEach((it) => {
+        if (!merged.some((m) => m.code === it.code)) merged.push(it);
+      });
+      const next = merged.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+      setSavedItems(next);
+      try {
+        localStorage.setItem("ln_sk_saved", JSON.stringify(next));
+      } catch {}
+      persistCollection(next, deviceId);
+      setClaimMsg(
+        `✓ ${data.items.length} rumus diambil dari kode ${raw}` +
+          (current.length ? ` + ${current.length} lokal digabung` : "")
+      );
+      setClaimCode("");
+    } catch (err) {
+      setClaimMsg("Error koneksi: " + err.message);
+    } finally {
+      setClaimBusy(false);
+    }
   };
 
   // ── Trek Gabungan (max 10 rumus) ──────────────────────────────────
@@ -638,9 +748,7 @@ export default function ScannerPage() {
       }
       const next = [item, ...savedItems];
       setSavedItems(next);
-      try {
-        localStorage.setItem("ln_sk_saved", JSON.stringify(next));
-      } catch {}
+      persistCollection(next, deviceId);
       setManualCode("");
       setManualMsg(`✓ Rumus ${item.rumus_key} ditambahkan (patah ${evalRes.patah}, ai ${evalRes.ai})`);
     } catch (err) {
@@ -651,6 +759,15 @@ export default function ScannerPage() {
   };
 
   const typeLabel = (code) => parseCode(code).type;
+
+  const syncStateLabel =
+    syncState === "syncing"
+      ? "⏳ menyimpan..."
+      : syncState === "saved"
+      ? "✓ tersimpan"
+      : syncState === "error"
+      ? "⚠️ offline (lokal saja)"
+      : "○ siap";
 
   return (
     <main className={styles.scannerWrap}>
@@ -877,6 +994,30 @@ export default function ScannerPage() {
             >
               🎯 REKAP 4D
             </button>
+            <select
+              value={showTiers}
+              onChange={(e) => {
+                const v = e.target.value;
+                setShowTiers(v);
+                const checked = checkedCodes
+                  .map((c) => savedItems.find((x) => x.code === c) || foundItems.find((x) => x.code === c))
+                  .filter(Boolean);
+                const typ = (t) => String(t || "").toUpperCase();
+                if (
+                  trekLog.includes("4D GABUNGAN") &&
+                  checked.some((x) => ["AID", "AD", "AI 2D DEPAN"].includes(typ(x.type))) &&
+                  checked.some((x) => ["AI", "AI 2D BELAKANG"].includes(typ(x.type)))
+                ) {
+                  setTrekLog(renderRekap4D(buildRekap4D(checked), v));
+                }
+              }}
+              className={styles.tierSelect}
+              title="Tier 4D yang ditampilkan list penuhnya di terminal"
+            >
+              <option value="top">Tampil: TOP saja</option>
+              <option value="cad12">Tampil: TOP+CAD 1+CAD 2</option>
+              <option value="all">Tampil: SEMUA tier</option>
+            </select>
             <button
               type="button"
               className={styles.btnTrend}
@@ -932,6 +1073,54 @@ export default function ScannerPage() {
           <div className={styles.manualHint}>
             Kode rumus dari halaman <strong>/rumus-otomatis</strong> (COPY CODE) atau dari scanner
             Angkanet bisa langsung ditempel di sini — sistem otomatis memuat trek & evaluasinya.
+          </div>
+        </div>
+        <div className={styles.syncBox}>
+          <div className={styles.syncLabel}>
+            ☁️ Bank Rumus <span className={styles.syncBadge}>{syncStateLabel}</span>
+          </div>
+          <div className={styles.syncRow}>
+            <span className={styles.syncCodeLabel}>Kode Sync:</span>
+            <code className={styles.syncCode}>{syncCode || "(memuat...)"}</code>
+            <button
+              type="button"
+              className={styles.btnSyncCopy}
+              onClick={() => {
+                if (syncCode && navigator.clipboard) {
+                  navigator.clipboard.writeText(syncCode);
+                }
+              }}
+              title="Copy kode sync"
+            >
+              📋
+            </button>
+          </div>
+          <div className={styles.syncRow}>
+            <span className={styles.syncCodeLabel}>Ambil di device lain:</span>
+            <input
+              type="text"
+              value={claimCode}
+              onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
+              placeholder="XXXX-XXXX"
+              className={styles.claimInput}
+              disabled={claimBusy}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !claimBusy) doClaim();
+              }}
+            />
+            <button
+              type="button"
+              className={styles.btnClaim}
+              onClick={doClaim}
+              disabled={claimBusy || !claimCode.trim()}
+            >
+              {claimBusy ? "⏳" : "⬇️ AMBIL"}
+            </button>
+          </div>
+          {claimMsg && <div className={styles.claimMsg}>{claimMsg}</div>}
+          <div className={styles.syncHint}>
+            Koleksi otomatis tersimpan di server per device. Pindah HP/laptop? Copy kode sync ini
+            lalu klik AMBIL di device baru. Hapus cache browser tidak lagi menghapus rumus Anda.
           </div>
         </div>
         <div className={styles.tableScroll}>

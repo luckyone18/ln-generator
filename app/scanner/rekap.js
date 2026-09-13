@@ -286,10 +286,54 @@ export function buildRekap4D(items) {
   };
 }
 
-// Batas jumlah tier yang ditampilkan list penuh-nya (sisanya count saja).
-const LIST_TIERS_MAX = 1;
+// Tier yang ditampilkan list penuh-nya (sisanya count saja):
+// "top" = TOP saja | "cad12" = TOP+CAD1+CAD2 | "all" = semua tier.
+function maxShowTiers(showTiers) {
+  return showTiers === "all" ? 999 : showTiers === "cad12" ? 3 : 1;
+}
 
-export function renderRekap4D(impl) {
+// Bar ASCII sederhana (10 blok).
+function bar(pct, width = 10) {
+  const fill = Math.round((pct / 100) * width);
+  return "█".repeat(Math.max(0, fill)) + "░".repeat(Math.max(0, width - fill));
+}
+
+// Statistik deskriptif pool 4D: distribusi tier, akumulasi coverage,
+// dan digit hidup per posisi dalam tier TOP.
+export function buildStats4D(impl) {
+  const TOTAL = 10000;
+  const tiers = [];
+  const maxP = impl.front.length + impl.back.length;
+  let cum = 0;
+  for (let p = 0; p <= maxP; p++) {
+    const n = impl.counts4D[p] || 0;
+    if (!n) continue;
+    cum += n;
+    const label = p === 0 ? "TOP" : p === 1 ? "CAD 1" : p === 2 ? "CAD 2" : `MATI ${p}`;
+    tiers.push({
+      label,
+      n,
+      pct: +((n / TOTAL) * 100).toFixed(1),
+      cumN: cum,
+      cumPct: +((cum / TOTAL) * 100).toFixed(1),
+    });
+  }
+  // digit hidup per posisi dalam tier TOP
+  const topList = impl.tiers4D[0] || [];
+  const posSets = [new Set(), new Set(), new Set(), new Set()];
+  for (const code of topList) {
+    if (code.length !== 4) continue;
+    for (let i = 0; i < 4; i++) posSets[i].add(code[i]);
+  }
+  const positions = posSets.map((s, i) => ({
+    pos: i + 1,
+    digits: [...s].sort().join(""),
+    count: s.size,
+  }));
+  return { TOTAL, tiers, positions };
+}
+
+export function renderRekap4D(impl, showTiers = "top") {
   const L = [];
   const label = (f, isFront) =>
     isFront ? `${f.type} : ${f.ai}` : `${f.type} : ${f.ai}`;
@@ -334,14 +378,32 @@ export function renderRekap4D(impl) {
   // blok 4D gabungan
   L.push("── 4D GABUNGAN ──");
   const maxP = impl.front.length + impl.back.length;
+  const showMax = maxShowTiers(showTiers);
   for (let p = 0; p <= maxP; p++) {
     const n = impl.counts4D[p] || 0;
     if (!n) continue;
     const t = p === 0 ? "TOP" : p === 1 ? "CAD 1" : p === 2 ? "CAD 2" : `MATI ${p}`;
     L.push(`[${t}] ${n} Line`);
-    if (p < LIST_TIERS_MAX) L.push(impl.tiers4D[p].join("*"));
-    else L.push("(daftar disembunyikan — poin terlalu banyak)");
+    if (p < showMax) L.push(impl.tiers4D[p].join("*"));
+    else L.push("(daftar disembunyikan — pilih [TOP+CAD] atau [SEMUA] di opsi tampilan)");
     L.push("");
   }
+
+  // blok statistik pool 4D
+  const stats = buildStats4D(impl);
+  L.push("── STATISTIK POOL 4D ──");
+  L.push(`Total kombinasi : ${stats.TOTAL}`);
+  stats.tiers.forEach((t) => {
+    L.push(
+      `[${t.label}]`.padEnd(9) +
+      `${String(t.n).padStart(5)} (${t.pct}%)` +
+      ` kumulatif ${t.cumN} (${t.cumPct}%) ${bar(t.cumPct)}`
+    );
+  });
+  L.push("");
+  L.push("Digit hidup per posisi (dari tier TOP 4D):");
+  stats.positions.forEach((p) => {
+    L.push(`  Posisi ${p.pos} : ${p.digits || "-"} (${p.count} digit)`);
+  });
   return L.join("\n");
 }
