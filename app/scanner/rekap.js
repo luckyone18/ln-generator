@@ -3,58 +3,69 @@
 // Hitung rekap dari kumpulan rumus (items = [{type, ai}]).
 // Pool = 00-99 2D; tiap angka dapat poin = berapa rumus yang mematikannya.
 // tier: 0=[TOP] 1=[CAD 1] 2=[CAD 2] 3+=[MATI n]. Sekaligus hitung KRES.
-export function buildRekap(formulas) {
-  const pool = Array.from({ length: 100 }, (_, i) => String(i).padStart(2, "0"));
-  const tiers = []; // tiers[poin] = [angka]
 
-  for (let i = 0; i < pool.length; i++) {
-    const a = pool[i];
-    const k = parseInt(a[0], 10);
-    const e = parseInt(a[1], 10);
-    const biji = k + e > 9 ? k + e - 9 : k + e;
-    let poin = 0;
+// Poin "mati" utk satu angka 2D ("00".."99") dari satu formula.
+function killPoint(a, f) {
+  const k = parseInt(a[0], 10);
+  const e = parseInt(a[1], 10);
+  const biji = k + e > 9 ? k + e - 9 : k + e;
+  const aiStr = String(f.ai || "");
+  const digits = aiStr.replace(/[^0-9]/g, "").split("");
+  const nums = aiStr.replace(/[^0-9]/g, " ").split(/\s+/).filter((v) => v.length > 0);
+  if (digits.length === 0 && nums.length === 0) return 0;
+  const typ = (f.type || "").toUpperCase();
 
-    formulas.forEach((f) => {
-      const digits = f.ai.replace(/[^0-9]/g, "").split("");
-      const nums = f.ai.replace(/[^0-9]/g, " ").split(/\s+/).filter((v) => v.length > 0);
-      if (digits.length === 0 && nums.length === 0) return;
-      const typ = (f.type || "").toUpperCase();
-
-      if (typ === "K" || typ === "KE" || typ === "KEP" || typ === "KEPALA" || typ === "KPL") {
-        if (!digits.includes(String(k))) poin++;
-      } else if (typ === "E" || typ === "EK" || typ === "EKR" || typ === "EKOR") {
-        if (!digits.includes(String(e))) poin++;
-      } else if (typ === "J" || typ === "JML" || typ === "JUMLAH" || typ === "BIJI") {
-        if (!digits.includes(String(biji))) poin++;
-      } else if (typ === "S" || typ === "SH" || typ === "SHIO") {
-        let numVal = parseInt(a, 10);
-        if (numVal === 0) numVal = 100;
-        const shioVal = numVal % 12 || 12;
-        let match = false;
-        for (const s of nums) {
-          if (parseInt(s, 10) === shioVal) { match = true; break; }
-        }
-        if (!match) poin++;
-      } else {
-        let found = false;
-        for (const d of digits) {
-          if (a.includes(d)) { found = true; break; }
-        }
-        if (!found) poin++;
-      }
-    });
-
-    if (!tiers[poin]) tiers[poin] = [];
-    tiers[poin].push(a);
+  if (typ === "K" || typ === "KE" || typ === "KEP" || typ === "KEPALA" || typ === "KPL") {
+    return digits.includes(String(k)) ? 0 : 1;
   }
+  if (typ === "E" || typ === "EK" || typ === "EKR" || typ === "EKOR") {
+    return digits.includes(String(e)) ? 0 : 1;
+  }
+  if (typ === "J" || typ === "JML" || typ === "JUMLAH" || typ === "BIJI") {
+    return digits.includes(String(biji)) ? 0 : 1;
+  }
+  if (typ === "S" || typ === "SH" || typ === "SHIO") {
+    let numVal = parseInt(a, 10);
+    if (numVal === 0) numVal = 100;
+    const shioVal = numVal % 12 || 12;
+    for (const s of nums) if (parseInt(s, 10) === shioVal) return 0;
+    return 1;
+  }
+  // default (AI, AID, CB, dst): hidup = minimal 1 digit termuat di angka
+  for (const d of digits) if (a.includes(d)) return 0;
+  return 1;
+}
 
-  // KRES: digit muncul di >= 2 formula, dikelompokkan per frekuensi
+// Poin per angka 2D (00-99) utk sekumpulan formula → { "00": p, ... }
+function scorePool(formulas) {
+  const pts = {};
+  for (let i = 0; i < 100; i++) {
+    const a = String(i).padStart(2, "0");
+    let p = 0;
+    for (const f of formulas) p += killPoint(a, f);
+    pts[a] = p;
+  }
+  return pts;
+}
+
+// Kelompokkan angka per poin → tiers[poin] = [angka, ...]
+function groupTiers(pts) {
+  const tiers = [];
+  for (const [a, p] of Object.entries(pts)) {
+    if (!tiers[p]) tiers[p] = [];
+    tiers[p].push(a);
+  }
+  return tiers;
+}
+
+// KRES: digit muncul di >= 2 formula, dikelompokkan per frekuensi.
+function kresOf(formulas) {
   const kresByLevel = {};
   if (formulas.length > 1) {
     const digitCount = {};
     formulas.forEach((f) => {
       const digits = new Set(
-        f.ai.replace(/[^0-9]/g, "").split("").filter((d) => d !== "")
+        String(f.ai || "").replace(/[^0-9]/g, "").split("").filter((d) => d !== "")
       );
       digits.forEach((d) => { digitCount[d] = (digitCount[d] || 0) + 1; });
     });
@@ -65,10 +76,14 @@ export function buildRekap(formulas) {
       }
     });
   }
-  const kresLevels = Object.keys(kresByLevel)
-    .map(Number)
-    .sort((a, b) => b - a);
+  const kresLevels = Object.keys(kresByLevel).map(Number).sort((a, b) => b - a);
+  return { kresByLevel, kresLevels };
+}
 
+export function buildRekap(formulas) {
+  const pts = scorePool(formulas);
+  const tiers = groupTiers(pts);
+  const { kresByLevel, kresLevels } = kresOf(formulas);
   return { tiers, kresByLevel, kresLevels };
 }
 
@@ -225,4 +240,108 @@ export function buildMergedTrek(items) {
   }
 
   return finalLogs.join("\n\n" + "=".repeat(35) + "\n\n");
+}
+
+// ── Rekap 4D (gabungan AID depan + AI belakang) ──────────────────────
+// Front = rumus AID (2D depan), Back = rumus AI (2D belakang).
+// Poin 4D = poinFront(ab) + poinBack(cd); tier 0=[TOP4D].
+// Syarat (divalidasi di UI): minimal 1 rumus AI DAN 1 rumus AID tercentang.
+const FRONT_TYPES = new Set(["AID", "AD", "AI 2D DEPAN"]);
+const BACK_TYPES = new Set(["AI", "AI 2D BELAKANG"]);
+
+export function buildRekap4D(items) {
+  const front = items.filter((x) => FRONT_TYPES.has(String(x.type || "").toUpperCase()));
+  const back = items.filter((x) => BACK_TYPES.has(String(x.type || "").toUpperCase()));
+
+  const ptsFront = scorePool(front);
+  const ptsBack = scorePool(back);
+  const tiersFront = groupTiers(ptsFront);
+  const tiersBack = groupTiers(ptsBack);
+  const kresFront = kresOf(front);
+  const kresBack = kresOf(back);
+
+  // konvolusi 4D: poinTotal = poinFront + poinBack
+  const maxP = front.length + back.length;
+  const tiers4D = []; // tiers4D[poin] = [ "abcd", ... ]
+  const counts4D = []; // counts4D[poin] = jumlah kombinasi
+  for (let p = 0; p <= maxP; p++) {
+    let list = [];
+    for (let f = 0; f <= p; f++) {
+      const b = p - f;
+      const fs = tiersFront[f] || [];
+      const bs = tiersBack[b] || [];
+      for (const d2 of fs) {
+        for (const d2b of bs) list.push(d2 + d2b);
+      }
+    }
+    counts4D[p] = list.length;
+    if (list.length) tiers4D[p] = list;
+  }
+
+  return {
+    front, back,
+    ptsFront, ptsBack, tiersFront, tiersBack,
+    kresFront, kresBack,
+    tiers4D, counts4D,
+  };
+}
+
+// Batas jumlah tier yang ditampilkan list penuh-nya (sisanya count saja).
+const LIST_TIERS_MAX = 1;
+
+export function renderRekap4D(impl) {
+  const L = [];
+  const label = (f, isFront) =>
+    isFront ? `${f.type} : ${f.ai}` : `${f.type} : ${f.ai}`;
+
+  L.push(`Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI`, "");
+
+  L.push("── 2D DEPAN (AID) ──");
+  impl.front.forEach((f) => L.push(label(f, true)));
+  L.push("");
+  L.push("── 2D BELAKANG (AI) ──");
+  impl.back.forEach((f) => L.push(label(f, false)));
+  L.push("");
+
+  // KRES front & back
+  const kresBlock = (name, kres) => {
+    if (kres.kresLevels.length === 0) return;
+    L.push(`--------------- ${name}`);
+    kres.kresLevels.forEach((lv) => {
+      const dg = kres.kresByLevel[lv].slice().sort().join("");
+      L.push(`KRES ${lv}   : ${dg}`);
+    });
+  };
+  kresBlock("DEPAN", impl.kresFront);
+  kresBlock("BELAKANG", impl.kresBack);
+  if (impl.kresFront.kresLevels.length || impl.kresBack.kresLevels.length) L.push("");
+
+  // blok tier 2D depan & belakang (ringkas)
+  const tierBlock = (name, tiers, n) => {
+    L.push(`── [${name}] TIER 2D ──`);
+    for (let p = 0; p <= n; p++) {
+      if (tiers[p] && tiers[p].length) {
+        const t = p === 0 ? "TOP" : p === 1 ? "CAD 1" : p === 2 ? "CAD 2" : `MATI ${p}`;
+        L.push(`[${t}] ${tiers[p].length} Line`);
+        L.push(tiers[p].join("*"));
+        L.push("");
+      }
+    }
+  };
+  tierBlock("DEPAN", impl.tiersFront, impl.front.length);
+  tierBlock("BELAKANG", impl.tiersBack, impl.back.length);
+
+  // blok 4D gabungan
+  L.push("── 4D GABUNGAN ──");
+  const maxP = impl.front.length + impl.back.length;
+  for (let p = 0; p <= maxP; p++) {
+    const n = impl.counts4D[p] || 0;
+    if (!n) continue;
+    const t = p === 0 ? "TOP" : p === 1 ? "CAD 1" : p === 2 ? "CAD 2" : `MATI ${p}`;
+    L.push(`[${t}] ${n} Line`);
+    if (p < LIST_TIERS_MAX) L.push(impl.tiers4D[p].join("*"));
+    else L.push("(daftar disembunyikan — poin terlalu banyak)");
+    L.push("");
+  }
+  return L.join("\n");
 }

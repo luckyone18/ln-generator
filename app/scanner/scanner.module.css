@@ -242,6 +242,7 @@
 }
 
 .btnRekap,
+.btnRekap4D,
 .btnTrek,
 .btnDeleteSel {
   border-radius: 6px;
@@ -261,6 +262,17 @@
 
 .btnRekap:hover:not(:disabled) {
   background: #16a34a;
+  color: #ffffff;
+}
+
+.btnRekap4D {
+  background: #faf5ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+
+.btnRekap4D:hover:not(:disabled) {
+  background: #7e22ce;
   color: #ffffff;
 }
 
@@ -287,6 +299,7 @@
 }
 
 .btnRekap:disabled,
+.btnRekap4D:disabled,
 .btnTrek:disabled,
 .btnDeleteSel:disabled {
   opacity: 0.45;

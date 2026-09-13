@@ -20,7 +20,7 @@ import {
   buildCode,
   buildTrekLog,
 } from "./engine";
-import { buildRekap, renderRekap, buildMergedTrek } from "./rekap";
+import { buildRekap, renderRekap, buildMergedTrek, buildRekap4D, renderRekap4D } from "./rekap";
 import styles from "./scanner.module.css";
 
 function parseCode(code) {
@@ -463,6 +463,30 @@ export default function ScannerPage() {
     setTrekLog(renderRekap(formulas, impl));
   };
 
+  // ── Rekap 4D (AID depan + AI belakang) ─────────────────────────────
+  const doRekap4D = () => {
+    if (!checkedCodes.length) {
+      alert("Pilih minimal 1 rumus AI dan 1 rumus AID di Koleksi untuk Rekap 4D.");
+      return;
+    }
+    const items = checkedCodes
+      .map((code) =>
+        savedItems.find((x) => x.code === code) || foundItems.find((x) => x.code === code)
+      )
+      .filter(Boolean);
+    const typ = (t) => String(t || "").toUpperCase();
+    const hasFront = items.some((x) => ["AID", "AD", "AI 2D DEPAN"].includes(typ(x.type)));
+    const hasBack = items.some((x) => ["AI", "AI 2D BELAKANG"].includes(typ(x.type)));
+    if (!hasFront || !hasBack) {
+      alert(
+        "Rekap 4D butuh minimal 1 rumus AID (2D depan) dan 1 rumus AI (2D belakang) yang dicentang."
+      );
+      return;
+    }
+    const impl = buildRekap4D(items);
+    setTrekLog(renderRekap4D(impl));
+  };
+
   // ── Trek Gabungan (max 10 rumus) ──────────────────────────────────
   const doMergedTrek = () => {
     if (!checkedCodes.length) {
@@ -698,6 +722,15 @@ export default function ScannerPage() {
               title="Rekap semua formula tercentang menjadi tier TOP/CAD/MATI"
             >
               🧮 REKAP ({checkedCodes.length})
+            </button>
+            <button
+              type="button"
+              className={styles.btnRekap4D}
+              onClick={doRekap4D}
+              disabled={checkedCodes.length === 0}
+              title="Rekap 4D — gabungkan AID (2D depan) + AI (2D belakang) jadi 4D TOP/CAD/MATI"
+            >
+              🎯 REKAP 4D
             </button>
             <button
               type="button"
