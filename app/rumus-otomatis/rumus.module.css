@@ -1,0 +1,303 @@
+.rumusContainer {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  color: #1e293b;
+}
+
+.rumusHeader {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.rumusHeader h1 {
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.5rem;
+}
+
+.rumusHeader p {
+  font-size: 0.95rem;
+  color: #64748b;
+}
+
+.toolbarPaste {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex-wrap: wrap;
+}
+
+.inputCode {
+  flex: 1;
+  min-width: 200px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  color: #334155;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.inputCode:focus {
+  border-color: #6366f1;
+  background: #ffffff;
+}
+
+.btnLoad {
+  background: #6366f1;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+  transition: all 0.15s;
+}
+
+.btnLoad:hover {
+  background: #4f46e5;
+}
+
+.btnReset {
+  background: #ffffff;
+  color: #d97706;
+  border: 1.5px solid #d97706;
+  border-radius: 6px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btnReset:hover {
+  background: #fef3c7;
+}
+
+.formGrid {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.rowGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.rowGroup:last-child {
+  margin-bottom: 0;
+}
+
+.fieldItem {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fieldLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.selectInput, .textInput {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+  color: #1e293b;
+  outline: none;
+  font-weight: 600;
+  transition: border-color 0.2s;
+}
+
+.selectInput:focus, .textInput:focus {
+  border-color: #3b82f6;
+  background: #ffffff;
+}
+
+.formulaRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.75rem;
+  background: #f1f5f9;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+}
+
+.opSelect {
+  width: 50px;
+  text-align: center;
+  font-weight: 800;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.45rem 0.2rem;
+  font-size: 0.9rem;
+}
+
+.actionNavRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.navBtns {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btnNav {
+  background: #0ea5e9;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
+  transition: all 0.15s;
+}
+
+.btnNav:hover {
+  background: #0284c7;
+}
+
+.btnNavNext {
+  background: #3b82f6;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.btnNavNext:hover {
+  background: #2563eb;
+}
+
+.btnLock {
+  border-radius: 6px;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+}
+
+.btnLockUnlocked {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.btnLockLocked {
+  background: #64748b;
+  color: #ffffff;
+}
+
+.resultsCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1.5rem;
+}
+
+.resultsTerminal {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #0f172a;
+  white-space: pre-wrap;
+  min-height: 320px;
+  background: #f8fafc;
+  padding: 1.25rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+}
+
+.codeOutputArea {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #334155;
+  resize: none;
+  outline: none;
+}
+
+.bottomActionRow {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.btnActionCopy {
+  border-radius: 6px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1.5px solid transparent;
+}
+
+.btnCopyRumus {
+  color: #0284c7;
+  border-color: #0284c7;
+  background: #f0f9ff;
+}
+
+.btnCopyRumus:hover {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.btnCopyCode {
+  color: #10b981;
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.btnCopyCode:hover {
+  background: #10b981;
+  color: #ffffff;
+}

@@ -344,6 +344,9 @@ export default function Page() {
           <Link href="/riwayat" className="btn btnBlue">
             RIWAYAT
           </Link>
+          <Link href="/rumus-otomatis" className="btn btnBlue">
+            RUMUS OTOMATIS
+          </Link>
         </div>
         {busy && <p className="loading">MEMPROSES ANALISA PREDIKSI...</p>}
       </section>

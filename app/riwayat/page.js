@@ -232,6 +232,9 @@ export default function RiwayatPage() {
         <Link href="/uji-kinerja" className="btn">
           Uji Kinerja Manual
         </Link>
+        <Link href="/rumus-otomatis" className="btn">
+          Rumus Otomatis
+        </Link>
       </div>
     </main>
   );
