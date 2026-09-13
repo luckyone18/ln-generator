@@ -4,42 +4,51 @@
 // C. Streak & statistik patah per rumus
 
 // Parse satu trek_log → [{ res, seq, hit }] (hit: true/false/null)
+// Format yang dikenali (3 sumber):
+//   server Angkanet : [h]d[/h] [m]ai[/m]=kena, 𐄂=patah, ?=prediksi, polos=baris referensi
+//   engine lokal    : [m]ai[/m]=kena, x=patah, ??=prediksi
+//   format lama     : (X)=patah, ?=prediksi
 export function parseTrek(log) {
   const out = [];
   if (!log) return out;
   const lines = String(log).split(/\r?\n/);
   for (const line of lines) {
-    const m = line.match(/^(\d{3,6})\s*:\s*(.*?)(\s+\[m\].*?\[\/m\]|\s+x|\s+\?\?)?\s*$/i);
+    const m = line.match(/^(\d{3,6})\s*:\s*(.*?)\s*$/);
     if (!m) continue;
     const res = m[1];
     const seq = (m[2] || "").trim();
+    const isMiss = /𐄂/.test(seq) || /\(X\)/i.test(seq) || /(?:^|\s)[x](?:\s|$)/.test(seq);
+    const isPred = /(?:^|\s)\?{1,2}(?:\s|$)/.test(seq);
     let hit = null;
-    const tail = (m[3] || "").trim();
-    if (/\[m\]/i.test(tail)) hit = true;
-    else if (/x$/i.test(tail)) hit = false;
+    if (isMiss) hit = false;
+    else if (isPred) hit = null;
+    else if (/\[h\]/i.test(seq) || /\[m\]/i.test(seq)) hit = true;
+    // tanpa marker sama sekali = baris referensi (di luar window penilaian) → null
     out.push({ res, seq, hit });
   }
   return out;
 }
 
 // A. Tren per draw: gabungkan semua trek terurut tua→baru.
-// Setiap entry: { res, hitCount, missCount, predictCount, total }
+// Setiap entry: { res, hitCount, missCount, predictCount, total, missIdx }
+// missIdx = index rumus (urutan items) yang patah pada draw tsb.
 export function buildDrawTrend(items) {
-  const draws = new Map(); // res -> { res, hits, total }
+  const draws = new Map(); // res -> { res, hits, total, missIdx }
   const order = [];
-  for (const item of items) {
+  items.forEach((item, itemIdx) => {
     const trek = parseTrek(item.trek_log);
     for (const row of trek) {
       if (row.hit === null) continue; // baris prediksi tidak dinilai
       if (!draws.has(row.res)) {
-        draws.set(row.res, { res: row.res, hits: 0, total: 0 });
+        draws.set(row.res, { res: row.res, hits: 0, total: 0, missIdx: [] });
         order.push(row.res);
       }
       const d = draws.get(row.res);
       d.hits += row.hit ? 1 : 0;
       d.total += 1;
+      if (!row.hit) d.missIdx.push(itemIdx);
     }
-  }
+  });
   // Urutkan tua→baru sesuai kemunculan terakhir (trek dianggap kronologis);
   // kalau beda rumus beda window, pakai urutan kemunculan pertama.
   return order.map((res) => {
@@ -49,6 +58,7 @@ export function buildDrawTrend(items) {
       hitCount: d.hits,
       missCount: d.total - d.hits,
       total: d.total,
+      missIdx: d.missIdx,
       pct: d.total ? Math.round((d.hits / d.total) * 100) : 0,
     };
   });
@@ -121,6 +131,17 @@ export function renderTrend(items) {
   L.push(`Trend Gabungan — ${items.length} Rumus`, "");
   L.push(`(analisa statistik historis, bukan prediksi)`, "");
 
+  // ── 0. Rumus yang dipakai ──
+  L.push("── 0. RUMUS YANG DIPAKAI ──");
+  items.forEach((it, i) => {
+    const badge =
+      it.source === "original" ? "☁️ ASLI" : it.source === "manual" ? "✍️ MANUAL" : it.source === "local" ? "⚡ LOKAL" : "";
+    L.push(
+      `(${i + 1}) ${it.rumus_key || "-"} | ${(it.type || "?").padEnd(14)} | ai ${it.ai || "-"} ${badge}`
+    );
+  });
+  L.push("");
+
   // ── A. Tren per draw ──
   L.push("── A. PERFORMA GABUNGAN PER DRAW ──");
   if (drawTrend.length === 0) {
@@ -130,7 +151,8 @@ export function renderTrend(items) {
     const show = drawTrend.slice(-20);
     show.forEach((d) => {
       const icon = d.pct >= 70 ? "🔥" : d.pct >= 40 ? "➖" : "❄️";
-      L.push(`${d.res} : ${d.hitCount}/${d.total} kena ${bar(d.pct)} ${d.pct}% ${icon}`);
+      const who = d.missIdx.length ? ` — patah: ${d.missIdx.map((i) => `(${i + 1})`).join(" ")}` : "";
+      L.push(`${d.res} : ${d.hitCount}/${d.total} kena${who} ${bar(d.pct)} ${d.pct}% ${icon}`);
     });
     const avg = drawTrend.length
       ? Math.round((drawTrend.reduce((a, d) => a + d.pct, 0) / drawTrend.length))

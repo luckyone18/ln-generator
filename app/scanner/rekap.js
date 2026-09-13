@@ -158,7 +158,7 @@ export function buildMergedTrek(items) {
           if (!dataMap[res]) dataMap[res] = { ai: [], status: "" };
 
           const parts = content.split(/\s+/);
-          while (parts.length > 0 && (parts[parts.length - 1] === "(X)" || parts[parts.length - 1] === "?")) {
+          while (parts.length > 0 && (parts[parts.length - 1] === "(X)" || parts[parts.length - 1] === "?" || parts[parts.length - 1] === "𐄂")) {
             parts.pop();
           }
           if (parts.length > 0) {
@@ -166,7 +166,7 @@ export function buildMergedTrek(items) {
             if (knownLabels.includes(parts[parts.length - 1].toLowerCase())) parts.pop();
           }
           dataMap[res].ai[idx] = parts.join(" ") || "-";
-          if (content.includes("(X)")) dataMap[res].status = " X";
+          if (content.includes("(X)") || content.includes("𐄂")) dataMap[res].status = " X";
           else if (content.includes("?")) dataMap[res].status = " ?";
 
           if (prevRes && prevRes !== res) {
@@ -215,7 +215,9 @@ export function buildMergedTrek(items) {
       "Keys   :\n\n" +
       sorted
         .map((it, idx) => {
-          return `(${idx + 1}) ${it.rumus_key || "-"}`;
+          const badge =
+            it.source === "original" ? "☁️" : it.source === "manual" ? "✍️" : it.source === "local" ? "⚡" : "";
+          return `(${idx + 1}) ${it.rumus_key || "-"} | ${(it.type || "?").padEnd(14)} | ai ${it.ai || "-"} ${badge}`;
         })
         .join("\n") +
       "\n\n";
