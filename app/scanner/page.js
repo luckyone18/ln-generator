@@ -68,6 +68,7 @@ export default function ScannerPage() {
   const [cooldown, setCooldown] = useState(0);
   const [checkedCodes, setCheckedCodes] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [engineMode, setEngineMode] = useState("idle"); // idle | original | local
 
   const scanRef = useRef({ active: false, items: [], iter: 0 });
   const localModeRef = useRef(false);
@@ -94,6 +95,8 @@ export default function ScannerPage() {
 
   const startScan = useCallback(async () => {
     scanRef.current = { active: true, items: [], iter: 0 };
+    localModeRef.current = false; // reset: coba asli dulu tiap scan baru
+    setEngineMode("original");
     setIsScanning(true);
     setFoundItems([]);
     setTrekLog("");
@@ -153,6 +156,7 @@ export default function ScannerPage() {
         } catch (err) {
           setStatusText(`_> SCM ERROR, PARASIT → LOKAL: ${err.message}`);
           localModeRef.current = true;
+          setEngineMode("local");
           await new Promise((r) => setTimeout(r, 300));
           continue;
         }
@@ -233,6 +237,7 @@ export default function ScannerPage() {
               type: TYPE_MAP[fCol] || fCol.toUpperCase(),
               market: market.toUpperCase(),
               days: (Array.isArray(s.days) ? s.days[0] : s.days) || "",
+              source: "original",
             };
             madeProgress = true;
             break;
@@ -251,14 +256,17 @@ export default function ScannerPage() {
           if (blocked) {
             setStatusText(`_> SCANNER ASLI ${msg.includes("limit") ? "DAILY LIMIT" : "MAINTENANCE"} → PARASIT LOKAL...`);
             localModeRef.current = true;
+          setEngineMode("local");
             continue;
           }
           setStatusText(`_> ${resp.message || "ERROR DARI SERVER"}`);
           localModeRef.current = true;
+          setEngineMode("local");
           continue;
         } else {
           // respons aneh/scanning terus → fallback lokal
           localModeRef.current = true;
+          setEngineMode("local");
           continue;
         }
       } else {
@@ -313,6 +321,7 @@ export default function ScannerPage() {
                 type: TYPE_MAP[fCol] || fCol.toUpperCase(),
                 market: market.toUpperCase(),
                 days: day,
+                source: "local",
               };
             }
           }
@@ -578,7 +587,18 @@ export default function ScannerPage() {
         </div>
 
         <div className={styles.progressArea}>
-          <div className={styles.progressText}>{statusText}</div>
+          <div className={styles.progressText}>
+            {engineMode !== "idle" && (
+              <span
+                className={`${styles.engineBadge} ${
+                  engineMode === "local" ? styles.engineBadgeLocal : styles.engineBadgeOriginal
+                }`}
+              >
+                {engineMode === "local" ? "⚡ ENGINE LOKAL" : "☁️ SERVER ASLI ANGKANET"}
+              </span>
+            )}
+            {statusText}
+          </div>
           <div className={styles.progressTrack}>
             <div
               className={`${styles.progressBar} ${
@@ -613,7 +633,23 @@ export default function ScannerPage() {
               ) : (
                 foundItems.map((item, idx) => (
                   <tr key={idx} className={styles.rowItem}>
-                    <td className={styles.cellType}>{typeLabel(item.code)}</td>
+                    <td className={styles.cellType}>
+                      <span
+                        className={`${styles.srcBadge} ${
+                          item.source === "original"
+                            ? styles.srcBadgeOriginal
+                            : styles.srcBadgeLocal
+                        }`}
+                        title={
+                          item.source === "original"
+                            ? "Rumus dari server scanner asli Angkanet"
+                            : "Rumus dari engine lokal (evaluasi filter_api)"
+                        }
+                      >
+                        {item.source === "original" ? "☁️ ASLI" : "⚡ LOKAL"}
+                      </span>{" "}
+                      {typeLabel(item.code)}
+                    </td>
                     <td className={styles.cellFormula}>
                       <button
                         type="button"
@@ -721,7 +757,23 @@ export default function ScannerPage() {
                         className={styles.chkBulk}
                       />
                     </td>
-                    <td className={styles.cellType}>{typeLabel(item.code)}</td>
+                    <td className={styles.cellType}>
+                      <span
+                        className={`${styles.srcBadge} ${
+                          item.source === "original"
+                            ? styles.srcBadgeOriginal
+                            : styles.srcBadgeLocal
+                        }`}
+                        title={
+                          item.source === "original"
+                            ? "Rumus dari server scanner asli Angkanet"
+                            : "Rumus dari engine lokal (evaluasi filter_api)"
+                        }
+                      >
+                        {item.source === "original" ? "☁️ ASLI" : "⚡ LOKAL"}
+                      </span>{" "}
+                      {typeLabel(item.code)}
+                    </td>
                     <td className={styles.cellPred}>{item.ai}</td>
                     <td className={styles.cellPjg}>{item.baris}</td>
                     <td>
