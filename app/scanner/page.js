@@ -21,6 +21,7 @@ import {
   buildTrekLog,
 } from "./engine";
 import { buildRekap, renderRekap, buildMergedTrek, buildRekap4D, renderRekap4D } from "./rekap";
+import { renderTrend } from "./trend";
 import styles from "./scanner.module.css";
 
 function parseCode(code) {
@@ -69,6 +70,7 @@ export default function ScannerPage() {
   const [checkedCodes, setCheckedCodes] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
   const [engineMode, setEngineMode] = useState("idle"); // idle | original | local
+  const [copied, setCopied] = useState(false);
 
   const scanRef = useRef({ active: false, items: [], iter: 0 });
   const localModeRef = useRef(false);
@@ -505,6 +507,48 @@ export default function ScannerPage() {
     setTrekLog(buildMergedTrek(items));
   };
 
+  // ── Trend Gabungan (analisa tren koleksi) ─────────────────────────
+  const doTrend = () => {
+    // Analisa rumus tercentang; jika tidak ada, seluruh koleksi
+    let items = checkedCodes
+      .map((code) =>
+        savedItems.find((x) => x.code === code) || foundItems.find((x) => x.code === code)
+      )
+      .filter(Boolean);
+    if (!items.length) items = savedItems;
+    if (!items.length) {
+      alert("Koleksi masih kosong — scan & simpan rumus dulu untuk analisa tren.");
+      return;
+    }
+    setTrekLog(renderTrend(items));
+  };
+
+  // ── Copy isi terminal ke clipboard ───────────────────────────────
+  const copyTerminal = async () => {
+    if (!trekLog) return;
+    try {
+      await navigator.clipboard.writeText(trekLog);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback untuk browser lama / non-secure context
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = trekLog;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        alert("Gagal copy — copy manual dari terminal.");
+      }
+    }
+  };
+
   const typeLabel = (code) => parseCode(code).type;
 
   return (
@@ -734,6 +778,14 @@ export default function ScannerPage() {
             </button>
             <button
               type="button"
+              className={styles.btnTrend}
+              onClick={doTrend}
+              title="Trend Gabungan — performa per draw, hot/cold digit, streak rumus (centang utk pilih, kosong = semua koleksi)"
+            >
+              📈 TREND
+            </button>
+            <button
+              type="button"
               className={styles.btnTrek}
               onClick={doMergedTrek}
               disabled={checkedCodes.length === 0}
@@ -846,12 +898,11 @@ export default function ScannerPage() {
             <h2>🖥️ HASIL TERMINAL</h2>
             <button
               type="button"
-              onClick={() => {
-                if (navigator.clipboard) navigator.clipboard.writeText(trekLog);
-              }}
+              onClick={copyTerminal}
               className={styles.btnCopyTrek}
+              title="Copy seluruh isi terminal (rekap 2D/4D, trek, trend) ke clipboard"
             >
-              📋 COPY
+              {copied ? "✓ TERSALIN" : "📋 COPY"}
             </button>
           </div>
           <pre
