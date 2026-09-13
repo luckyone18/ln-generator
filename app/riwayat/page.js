@@ -47,12 +47,13 @@ export default function RiwayatPage() {
   const rows = (data?.rows || []).slice().reverse();
   const enriched = (data?.report?.enrichedRows || []).slice().reverse();
   const zr = data?.report?.lZoneRates || null;
+  const tardal = data?.report?.tardal || null;
 
   return (
     <main className="page">
       <h1 className="title">Riwayat &amp; Auto-Backtest</h1>
       <p className="subtitle">
-        Result harian di-scrape otomatis dari paito, backtest dijalankan tiap update.
+        Result harian di-scrape otomatis dari paito, backtest LN &amp; Tardal dijalankan tiap update.
       </p>
 
       <div className="poolRow">
@@ -118,6 +119,45 @@ export default function RiwayatPage() {
             </div>
           </div>
 
+          {/* Bagian Performa Tardal (Kress 7 No Twin) */}
+          <div className="tardalSectionWrap">
+            <h2 className="sectionTitle">
+              Kinerja Tardal (Kress 7 · No Twin)
+            </h2>
+            <div className="statGrid statGrid2">
+              <div className="statBox">
+                <div className="statLabel">Tardal 3D (210 Kombinasi)</div>
+                <div className="statVal">
+                  {tardal?.t3?.hitRate !== undefined
+                    ? `${tardal.t3.hitRate.toFixed(1)}%`
+                    : data.report?.tOpt?.type === "3" && data.report?.tHitRate !== null
+                    ? `${data.report.tHitRate.toFixed(1)}%`
+                    : "-"}
+                </div>
+                <div className="statSub">
+                  {tardal?.t3?.hits !== undefined
+                    ? `${tardal.t3.hits} kena dari ${tardal.t3.steps} langkah (rata2 ${tardal.t3.avg.toFixed(2)}/langkah)`
+                    : "Backtest harian 3D"}
+                </div>
+              </div>
+              <div className="statBox">
+                <div className="statLabel">Tardal 4D (840 Kombinasi)</div>
+                <div className="statVal">
+                  {tardal?.t4?.hitRate !== undefined
+                    ? `${tardal.t4.hitRate.toFixed(1)}%`
+                    : data.report?.tOpt?.type === "4" && data.report?.tHitRate !== null
+                    ? `${data.report.tHitRate.toFixed(1)}%`
+                    : "-"}
+                </div>
+                <div className="statSub">
+                  {tardal?.t4?.hits !== undefined
+                    ? `${tardal.t4.hits} kena dari ${tardal.t4.steps} langkah (rata2 ${tardal.t4.avg.toFixed(2)}/langkah)`
+                    : "Target tepat 4D"}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {zr && (
             <div className="zoneWrap">
               <h2 className="sectionTitle">Distribusi Zona LN (2D No Twin)</h2>
@@ -140,7 +180,10 @@ export default function RiwayatPage() {
                   <th>Tanggal</th>
                   <th>Sebelum</th>
                   <th>Result</th>
-                  <th>Zona ekor vs partisi sebelumnya</th>
+                  <th>Kress (7D)</th>
+                  <th>Zona LN</th>
+                  <th>Tardal 3D</th>
+                  <th>Tardal 4D</th>
                 </tr>
               </thead>
               <tbody>
@@ -149,10 +192,29 @@ export default function RiwayatPage() {
                     <td>{r.date || "-"}</td>
                     <td className="mono">{r.prev}</td>
                     <td className="mono strong">{r.next}</td>
+                    <td className="mono">{r.kress || "-"}</td>
                     <td>
                       <span className={`zoneBadge zone-${r.zone}`}>
                         {ZONE_LABEL[r.zone] || r.zone || "-"}
                       </span>
+                    </td>
+                    <td>
+                      {r.t3Hit !== undefined ? (
+                        <span className={`badgeMini ${r.t3Hit ? "badgeHit" : "badgeMiss"}`}>
+                          {r.t3Hit ? `HIT (${r.t3Count})` : "MISS"}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>
+                      {r.t4Hit !== undefined ? (
+                        <span className={`badgeMini ${r.t4Hit ? "badgeHit" : "badgeMiss"}`}>
+                          {r.t4Hit ? `HIT (${r.t4Count})` : "MISS"}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
                     </td>
                   </tr>
                 ))}
