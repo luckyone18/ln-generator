@@ -9,12 +9,18 @@ export function decodeAcc(val) {
   const kIdx = PHP_KEYS.indexOf(prx);
   const remainder = val.substring(prx.length);
   const match = remainder.match(/^(\d+)(.*)$/i);
-  if (!match) return { k: -1, m: 1, s: "off" };
-  return {
-    k: kIdx,
-    m: parseInt(match[1], 10) || 1,
-    s: match[2] ? match[2].toLowerCase() : "off",
-  };
+  if (match) {
+    return {
+      k: kIdx,
+      m: parseInt(match[1], 10) || 1,
+      s: match[2] ? match[2].toLowerCase() : "off",
+    };
+  }
+  // Index 1 dihilangkan (format engine lokal): "Kmb" = K + index 1 + mistik mb
+  if (remainder) {
+    return { k: kIdx, m: 1, s: remainder.toLowerCase() };
+  }
+  return { k: kIdx, m: 1, s: "off" };
 }
 
 export function encodeFormulaCode(state, activeCols) {
@@ -120,25 +126,30 @@ export function decodeFormulaCode(rawCode) {
   }
 
   const fsplit = formulaStr.split(/([-+])/);
+  // Artefak leading operator ("-J3m5-Js9ml" dari format lama): buang op depan,
+  // daftar key bergeser — "J3m5-Js9ml".
+  const fterms = fsplit[0] === "" && (fsplit[1] === "-" || fsplit[1] === "+")
+    ? fsplit.slice(2)
+    : fsplit;
   const parsePart = (str) => {
     if (!str) return { k: -1, m: 1, s: "off" };
     return decodeAcc(str);
   };
 
-  const r1 = parsePart(fsplit[0]);
+  const r1 = parsePart(fterms[0]);
   config.k1 = r1.k;
   config.m1 = r1.m;
   config.s1 = r1.s;
-  if (fsplit[1]) {
-    config.op1 = fsplit[1];
-    const r2 = parsePart(fsplit[2]);
+  if (fterms[1]) {
+    config.op1 = fterms[1];
+    const r2 = parsePart(fterms[2]);
     config.k2 = r2.k;
     config.m2 = r2.m;
     config.s2 = r2.s;
   }
-  if (fsplit[3]) {
-    config.op2 = fsplit[3];
-    const r3 = parsePart(fsplit[4]);
+  if (fterms[3]) {
+    config.op2 = fterms[3];
+    const r3 = parsePart(fterms[4]);
     config.k3 = r3.k;
     config.m3 = r3.m;
     config.s3 = r3.s;

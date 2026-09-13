@@ -22,6 +22,7 @@ import {
 } from "./engine";
 import { buildRekap, renderRekap, buildMergedTrek, buildRekap4D, renderRekap4D } from "./rekap";
 import { renderTrend } from "./trend";
+import { decodeFormulaCode } from "../rumus-otomatis/decoder";
 import styles from "./scanner.module.css";
 
 function parseCode(code) {
@@ -71,6 +72,9 @@ export default function ScannerPage() {
   const [selectAll, setSelectAll] = useState(false);
   const [engineMode, setEngineMode] = useState("idle"); // idle | original | local
   const [copied, setCopied] = useState(false);
+  const [manualCode, setManualCode] = useState("");
+  const [manualBusy, setManualBusy] = useState(false);
+  const [manualMsg, setManualMsg] = useState("");
 
   const scanRef = useRef({ active: false, items: [], iter: 0 });
   const localModeRef = useRef(false);
@@ -549,6 +553,103 @@ export default function ScannerPage() {
     }
   };
 
+  // ── Tambah rumus manual (paste kode) ──────────────────────────────
+  const doAddManual = async () => {
+    const raw = manualCode.trim();
+    setManualMsg("");
+    if (!raw) {
+      setManualMsg("Masukkan kode rumus dulu (contoh: #SGP_ai_Km5+C6mb_L15-P0-D0_ACDE)");
+      return;
+    }
+    const cfg = decodeFormulaCode(raw);
+    if (!cfg || !cfg.market || !cfg.fCol) {
+      setManualMsg("Kode tidak valid — format: #MARKET_TYPE_FORMULA_L15-P0-D0_ABCD");
+      return;
+    }
+    setManualBusy(true);
+    try {
+      // aktif = komplemen manualHidden
+      const isShio = ["s", "st", "sd"].includes(cfg.fCol);
+      const maxCols = isShio ? 12 : 10;
+      const activeCols = [];
+      for (let i = 0; i < maxCols; i++) if (!(cfg.manualHidden || []).includes(i)) activeCols.push(i);
+
+      // fetch paito & flag hit via proxy rumus-otomatis
+      const state = {
+        market: cfg.market,
+        limit: cfg.limit || 15,
+        days: cfg.days || [],
+        patah: 0,
+        fCol: cfg.fCol,
+        k1: cfg.k1, m1: cfg.m1, s1: cfg.s1, op1: cfg.op1 || "+",
+        k2: cfg.k2 ?? -1, m2: cfg.m2 ?? 1, s2: cfg.s2 ?? "off", op2: cfg.op2 || "+",
+        k3: cfg.k3 ?? -1, m3: cfg.m3 ?? 1, s3: cfg.s3 ?? "off",
+        sf: cfg.sf || "off",
+        hideEmpty: true,
+        targetD: 0,
+        showRef: 0,
+        manualHidden: cfg.manualHidden || [],
+        isFrozen: true,
+      };
+      const res = await fetch("/api/rumus-otomatis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state),
+      });
+      const resp = await res.json();
+      if (!resp || !resp.rows || resp.rows.length < 2) {
+        setManualMsg("Gagal memuat data paito untuk rumus ini. Coba lagi.");
+        return;
+      }
+
+      const evalRes = evaluateRows(resp.rows, activeCols, cfg.fCol, 99);
+      if (!evalRes) {
+        setManualMsg("Data paito terlalu sedikit untuk dievaluasi.");
+        return;
+      }
+
+      const formula = {
+        k1: cfg.k1, m1: cfg.m1, s1: cfg.s1,
+        op1: cfg.op1 || "+",
+        k2: cfg.k2 ?? -1, m2: cfg.m2 ?? 1, s2: cfg.s2 ?? "off",
+        op2: cfg.op2 || "+",
+        k3: cfg.k3 ?? -1, m3: cfg.m3 ?? 1, s3: cfg.s3 ?? "off",
+        sf: cfg.sf || "off",
+      };
+      const code = raw.startsWith("#") ? raw : "#" + raw;
+      const item = {
+        code,
+        baris: evalRes.rowsEval,
+        patah: evalRes.patah,
+        ai: evalRes.ai,
+        colsKey: JSON.stringify([...activeCols].sort((a, b) => a - b)),
+        trek_log: buildTrekLog(resp.rows, activeCols, cfg.fCol, formula, evalRes.marks, evalRes.ai),
+        rumus_key: formulaKey(formula),
+        type: TYPE_MAP[cfg.fCol] || cfg.fCol.toUpperCase(),
+        market: cfg.market.toUpperCase(),
+        days: (cfg.days && cfg.days[0]) || "",
+        source: "manual",
+      };
+
+      // dedup: kalau kode sama sudah ada, tolak
+      if (savedItems.some((x) => x.code === code)) {
+        setManualMsg("Rumus ini sudah ada di koleksi.");
+        return;
+      }
+      const next = [item, ...savedItems];
+      setSavedItems(next);
+      try {
+        localStorage.setItem("ln_sk_saved", JSON.stringify(next));
+      } catch {}
+      setManualCode("");
+      setManualMsg(`✓ Rumus ${item.rumus_key} ditambahkan (patah ${evalRes.patah}, ai ${evalRes.ai})`);
+    } catch (err) {
+      setManualMsg(`Error: ${err.message}`);
+    } finally {
+      setManualBusy(false);
+    }
+  };
+
   const typeLabel = (code) => parseCode(code).type;
 
   return (
@@ -804,6 +905,35 @@ export default function ScannerPage() {
             </button>
           </div>
         </div>
+        <div className={styles.manualAddBox}>
+          <div className={styles.manualAddLabel}>➕ Tambah Rumus Manual</div>
+          <div className={styles.manualAddRow}>
+            <input
+              type="text"
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value)}
+              placeholder="Paste kode rumus: #SGP_ai_Km5+C6mb_L15-P0-D0_ACDE"
+              className={styles.manualInput}
+              disabled={manualBusy}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !manualBusy) doAddManual();
+              }}
+            />
+            <button
+              type="button"
+              className={styles.btnManualAdd}
+              onClick={doAddManual}
+              disabled={manualBusy || !manualCode.trim()}
+            >
+              {manualBusy ? "⏳ Memuat..." : "➕ TAMBAH"}
+            </button>
+          </div>
+          {manualMsg && <div className={styles.manualMsg}>{manualMsg}</div>}
+          <div className={styles.manualHint}>
+            Kode rumus dari halaman <strong>/rumus-otomatis</strong> (COPY CODE) atau dari scanner
+            Angkanet bisa langsung ditempel di sini — sistem otomatis memuat trek & evaluasinya.
+          </div>
+        </div>
         <div className={styles.tableScroll}>
           <table className={styles.scannerTable}>
             <thead>
@@ -847,15 +977,19 @@ export default function ScannerPage() {
                         className={`${styles.srcBadge} ${
                           item.source === "original"
                             ? styles.srcBadgeOriginal
+                            : item.source === "manual"
+                            ? styles.srcBadgeManual
                             : styles.srcBadgeLocal
                         }`}
                         title={
                           item.source === "original"
                             ? "Rumus dari server scanner asli Angkanet"
+                            : item.source === "manual"
+                            ? "Rumus ditambahkan manual (paste kode)"
                             : "Rumus dari engine lokal (evaluasi filter_api)"
                         }
                       >
-                        {item.source === "original" ? "☁️ ASLI" : "⚡ LOKAL"}
+                        {item.source === "original" ? "☁️ ASLI" : item.source === "manual" ? "✍️ MANUAL" : "⚡ LOKAL"}
                       </span>{" "}
                       {typeLabel(item.code)}
                     </td>
