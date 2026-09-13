@@ -222,6 +222,89 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
+.collectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.collectionHead .tableTitle {
+  margin-bottom: 0;
+}
+
+.collectionToolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btnRekap,
+.btnTrek,
+.btnDeleteSel {
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1.5px solid transparent;
+}
+
+.btnRekap {
+  background: #f0fdf4;
+  color: #16a34a;
+  border-color: #86efac;
+}
+
+.btnRekap:hover:not(:disabled) {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.btnTrek {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.btnTrek:hover:not(:disabled) {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.btnDeleteSel {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.btnDeleteSel:hover:not(:disabled) {
+  background: #b91c1c;
+  color: #ffffff;
+}
+
+.btnRekap:disabled,
+.btnTrek:disabled,
+.btnDeleteSel:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cellChk {
+  width: 34px;
+  text-align: center;
+}
+
+.chkBulk {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #0d9488;
+}
+
 .tableTitle {
   font-size: 1.05rem;
   font-weight: 800;

@@ -20,6 +20,7 @@ import {
   buildCode,
   buildTrekLog,
 } from "./engine";
+import { buildRekap, renderRekap, buildMergedTrek } from "./rekap";
 import styles from "./scanner.module.css";
 
 function parseCode(code) {
@@ -65,6 +66,8 @@ export default function ScannerPage() {
   const [statusText, setStatusText] = useState("_> SIAP MEMINDAI");
   const [trekLog, setTrekLog] = useState("");
   const [cooldown, setCooldown] = useState(0);
+  const [checkedCodes, setCheckedCodes] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
 
   const scanRef = useRef({ active: false, items: [], iter: 0 });
   const localModeRef = useRef(false);
@@ -227,6 +230,7 @@ export default function ScannerPage() {
               colsKey,
               trek_log: trekText,
               rumus_key: autoKey,
+              type: TYPE_MAP[fCol] || fCol.toUpperCase(),
               market: market.toUpperCase(),
               days: (Array.isArray(s.days) ? s.days[0] : s.days) || "",
             };
@@ -302,6 +306,7 @@ export default function ScannerPage() {
                 colsKey,
                 trek_log: buildTrekLog(resp.rows, activeCols, fCol, formula, evalRes.marks, evalRes.ai),
                 rumus_key: formulaKey(formula),
+                type: TYPE_MAP[fCol] || fCol.toUpperCase(),
                 market: market.toUpperCase(),
                 days: day,
               };
@@ -395,6 +400,72 @@ export default function ScannerPage() {
     const item =
       foundItems.find((x) => x.code === code) || savedItems.find((x) => x.code === code);
     if (item && item.trek_log) setTrekLog(item.trek_log);
+  };
+
+  // ── Checkbox koleksi ──────────────────────────────────────────────
+  const toggleCheck = (code) => {
+    setCheckedCodes((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectAll || checkedCodes.length === savedItems.length) {
+      setCheckedCodes([]);
+      setSelectAll(false);
+    } else {
+      setCheckedCodes(savedItems.map((s) => s.code));
+      setSelectAll(true);
+    }
+  };
+
+  const deleteChecked = () => {
+    if (!checkedCodes.length) return;
+    const next = savedItems.filter((s) => !checkedCodes.includes(s.code));
+    setSavedItems(next);
+    setCheckedCodes([]);
+    setSelectAll(false);
+    try {
+      localStorage.setItem("ln_sk_saved", JSON.stringify(next));
+    } catch {}
+  };
+
+  // ── Rekap Rumus (dari formula tercentang) ─────────────────────────
+  const doRekap = () => {
+    if (!checkedCodes.length) {
+      alert("Pilih minimal 1 rumus di Koleksi untuk membuat Rekap.");
+      return;
+    }
+    const formulas = checkedCodes
+      .map((code) =>
+        savedItems.find((x) => x.code === code) || foundItems.find((x) => x.code === code)
+      )
+      .filter(Boolean)
+      .map((item) => ({
+        code: item.code,
+        type: item.type || "AI",
+        ai: item.ai,
+      }));
+    const impl = buildRekap(formulas);
+    setTrekLog(renderRekap(formulas, impl));
+  };
+
+  // ── Trek Gabungan (max 10 rumus) ──────────────────────────────────
+  const doMergedTrek = () => {
+    if (!checkedCodes.length) {
+      alert("Pilih minimal 1 rumus di Koleksi untuk Trek Gabungan.");
+      return;
+    }
+    const items = checkedCodes
+      .map((code) =>
+        savedItems.find((x) => x.code === code) || foundItems.find((x) => x.code === code)
+      )
+      .filter(Boolean);
+    if (items.length > 10) {
+      alert("Maksimal 10 rumus untuk Trek Gabungan.");
+      return;
+    }
+    setTrekLog(buildMergedTrek(items));
   };
 
   const typeLabel = (code) => parseCode(code).type;
@@ -576,11 +647,51 @@ export default function ScannerPage() {
       </section>
 
       <section className={styles.collectionPanel}>
-        <h2 className={styles.tableTitle}>📚 KOLEKSI RUMUS SAYA ({savedItems.length})</h2>
+        <div className={styles.collectionHead}>
+          <h2 className={styles.tableTitle}>📚 KOLEKSI RUMUS SAYA ({savedItems.length})</h2>
+          <div className={styles.collectionToolbar}>
+            <button
+              type="button"
+              className={styles.btnRekap}
+              onClick={doRekap}
+              disabled={checkedCodes.length === 0}
+              title="Rekap semua formula tercentang menjadi tier TOP/CAD/MATI"
+            >
+              🧮 REKAP ({checkedCodes.length})
+            </button>
+            <button
+              type="button"
+              className={styles.btnTrek}
+              onClick={doMergedTrek}
+              disabled={checkedCodes.length === 0}
+              title="Gabungkan trek seluruh rumus tercentang (max 10)"
+            >
+              🔀 TREK GABUNGAN
+            </button>
+            <button
+              type="button"
+              className={styles.btnDeleteSel}
+              onClick={deleteChecked}
+              disabled={checkedCodes.length === 0}
+              title="Hapus rumus tercentang"
+            >
+              🗑 HAPUS ({checkedCodes.length})
+            </button>
+          </div>
+        </div>
         <div className={styles.tableScroll}>
           <table className={styles.scannerTable}>
             <thead>
               <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={toggleSelectAll}
+                    className={styles.chkBulk}
+                    title="Pilih semua rumus"
+                  />
+                </th>
                 <th>RMS</th>
                 <th>PRED</th>
                 <th>PJG</th>
@@ -591,13 +702,21 @@ export default function ScannerPage() {
             <tbody>
               {savedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className={styles.emptyCell}>
+                  <td colSpan={6} className={styles.emptyCell}>
                     Belum ada rumus yang disimpan.
                   </td>
                 </tr>
               ) : (
                 savedItems.map((item, idx) => (
                   <tr key={idx} className={styles.rowSaved}>
+                    <td className={styles.cellChk}>
+                      <input
+                        type="checkbox"
+                        checked={checkedCodes.includes(item.code)}
+                        onChange={() => toggleCheck(item.code)}
+                        className={styles.chkBulk}
+                      />
+                    </td>
                     <td className={styles.cellType}>{typeLabel(item.code)}</td>
                     <td className={styles.cellPred}>{item.ai}</td>
                     <td className={styles.cellPjg}>{item.baris}</td>
