@@ -235,6 +235,9 @@ export default function RiwayatPage() {
         <Link href="/rumus-otomatis" className="btn">
           Rumus Otomatis
         </Link>
+        <Link href="/scanner" className="btn">
+          Scanner Pro
+        </Link>
       </div>
     </main>
   );

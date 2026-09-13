@@ -367,6 +367,9 @@ export default function RumusOtomatisPage() {
           <Link href="/uji-kinerja" className="btn btnBlue">
             UJI KINERJA
           </Link>
+          <Link href="/scanner" className="btn btnBlue">
+            SCANNER PRO
+          </Link>
         </div>
       </header>
 

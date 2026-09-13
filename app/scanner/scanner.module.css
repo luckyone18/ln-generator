@@ -1,0 +1,480 @@
+.scannerWrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  color: #1e293b;
+}
+
+.scannerHeader {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.scannerHeader h1 {
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.35rem;
+}
+
+.scannerHeader p {
+  font-size: 0.95rem;
+  color: #64748b;
+  margin-bottom: 1rem;
+}
+
+.headerNav {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.navPill {
+  background: #e2e8f0;
+  color: #334155;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.navPill:hover {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+/* ── Config panel ─────────────────────────────────────── */
+.configPanel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.configGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.cfgField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cfgField span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cfgField select {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.82rem;
+  color: #1e293b;
+  outline: none;
+  font-weight: 600;
+  transition: border-color 0.2s;
+}
+
+.cfgField select:focus {
+  border-color: #3b82f6;
+  background: #ffffff;
+}
+
+.controlRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.btnScan {
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.75rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  color: #ffffff;
+  transition: all 0.15s;
+}
+
+.btnScanStart {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.4);
+}
+
+.btnScanStart:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.5);
+}
+
+.btnScanStop {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+}
+
+.btnScan:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btnSecondary:hover {
+  background: #dbeafe;
+}
+
+.btnDanger {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1.5px solid #fecaca;
+  border-radius: 8px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btnDanger:hover {
+  background: #fee2e2;
+}
+
+/* ── Progress ─────────────────────────────────────────── */
+.progressArea {
+  margin-top: 0.5rem;
+}
+
+.progressText {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0d9488;
+  background: #0f172a;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px 6px 0 0;
+  letter-spacing: 0.02em;
+}
+
+.progressTrack {
+  height: 10px;
+  background: #1e293b;
+  border-radius: 0 0 6px 6px;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  transition: width 0.4s ease;
+}
+
+.progressBarActive {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  animation: pulseBar 1s ease-in-out infinite;
+}
+
+@keyframes pulseBar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.progressBarDone {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+/* ── Tables ───────────────────────────────────────────── */
+.tablePanel,
+.collectionPanel,
+.terminalPanel,
+.infoPanel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.tableTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 0.75rem;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.scannerTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.scannerTable thead th {
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 800;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  text-align: center;
+}
+
+.scannerTable td {
+  padding: 0.55rem 0.4rem;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.rowItem {
+  background: #fffbeb;
+  transition: background 0.2s;
+}
+
+.rowItem:hover {
+  background: #fef3c7;
+}
+
+.rowSaved {
+  background: #f0fdf4;
+}
+
+.rowSaved:hover {
+  background: #dcfce7;
+}
+
+.emptyCell {
+  color: #94a3b8;
+  font-style: italic;
+  padding: 1.25rem !important;
+}
+
+.cellType {
+  font-weight: 800;
+  color: #0f172a;
+  font-size: 0.75rem;
+}
+
+.cellFormula {
+  max-width: 260px;
+}
+
+.codeChip {
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #1e3a8a;
+  background: #e0e7ff;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #a5b4fc;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.codeChip:hover {
+  background: #c7d2fe;
+}
+
+.cellPred {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 800;
+  color: #0d9488;
+  font-size: 0.9rem;
+}
+
+.cellPjg {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.cellAction {
+  white-space: nowrap;
+}
+
+.badgeOk {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+  margin-right: 4px;
+}
+
+.badgeZone {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  margin-right: 4px;
+}
+
+.btnSave {
+  padding: 4px 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btnSave:hover {
+  background: #dbeafe;
+}
+
+.btnSave:disabled {
+  color: #10b981;
+  border-color: #6ee7b7;
+  background: #ecfdf5;
+  cursor: default;
+}
+
+.btnDelete {
+  padding: 4px 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.btnDelete:hover {
+  background: #fee2e2;
+}
+
+.privateNote {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.75rem;
+}
+
+/* ── Terminal ─────────────────────────────────────────── */
+.terminalHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.terminalHead h2 {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.btnCopyTrek {
+  background: #0d9488;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btnCopyTrek:hover {
+  background: #0f766e;
+}
+
+.terminalBody {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #e2e8f0;
+  background: #0f172a;
+  padding: 1.25rem;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 480px;
+  overflow-y: auto;
+  margin: 0;
+}
+
+/* ── Info ─────────────────────────────────────────────── */
+.infoPanel h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.infoItem {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+}
+
+.infoItem strong {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 0.35rem;
+  color: #0f172a;
+}
+
+.infoItem p {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #475569;
+  margin: 0;
+}
+
+.disclaimer {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-style: italic;
+}
