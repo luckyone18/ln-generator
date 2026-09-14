@@ -30,71 +30,134 @@ export function parseTrek(log) {
   return out;
 }
 
+// Ambil digit angka main dari seq trek (buang semua tag/markup).
+function digitsOf(seq) {
+  return new Set(
+    String(seq)
+      .replace(/\[[^\]]*\]/g, "") // buang tag [h]..[/h], [m]ai[/m]
+      .replace(/[^0-9]/g, "")
+      .split("")
+      .filter((x) => x !== "")
+  );
+}
+
+// Urutan draw kronologis dari kumpulan trek satu pasar:
+// tiap trek = rantai draw berurutan; gabungkan semua rantai via
+// topological sort (draw yang sama jadi anchor antar window offset).
+function orderFromTreks(treks) {
+  const edges = new Map(); // res -> Set(next)
+  const indeg = new Map(); // res -> indegree
+  const seenOrder = [];
+  const mark = (r) => {
+    if (!indeg.has(r)) { indeg.set(r, 0); seenOrder.push(r); }
+  };
+  for (const t of treks) {
+    for (let i = 0; i < t.length - 1; i++) {
+      const a = t[i].res, b = t[i + 1].res;
+      mark(a); mark(b);
+      if (a === b) continue;
+      if (!edges.has(a)) edges.set(a, new Set());
+      if (!edges.get(a).has(b)) {
+        edges.get(a).add(b);
+        indeg.set(b, indeg.get(b) + 1);
+      }
+    }
+    if (t.length) mark(t[t.length - 1].res);
+  }
+  // Kahn: seed node indegree 0 (urut kemunculan pertama)
+  const queue = seenOrder.filter((r) => indeg.get(r) === 0);
+  const order = [];
+  const done = new Set();
+  while (queue.length) {
+    const r = queue.shift();
+    if (done.has(r)) continue;
+    done.add(r);
+    order.push(r);
+    for (const nx of edges.get(r) || []) {
+      indeg.set(nx, indeg.get(nx) - 1);
+      if (indeg.get(nx) === 0) queue.push(nx);
+    }
+  }
+  // sisa (siklus/anomali): pertahankan urutan kemunculan
+  for (const r of seenOrder) if (!done.has(r)) order.push(r);
+  return order;
+}
+
 // A. Coverage per draw: patokan = angka 4D result.
 // Konvensi trek: AI pada baris i memprediksi result baris i+1, jadi
 // angka main yang dinilai utk result R = AI pada baris tepat sebelum R.
-// Gabungan (union) angka main semua rumus → berapa posisi digit R yang
+// Rumus dikelompokkan per market (draw pasar berbeda tidak dicampur),
+// union angka main semua rumus satu pasar → berapa posisi digit R yang
 // tertutup. 4/4 digit = 100%.
 export function buildDrawTrend(items) {
-  const draws = new Map(); // res -> { res, aiSets: [Set digit, ...] }
-  const order = [];
+  const byMarket = new Map(); // market -> [item, ...]
   items.forEach((item) => {
-    const trek = parseTrek(item.trek_log);
-    const perRes = new Map(); // res -> Set digit AI (kemunculan terakhir menang)
-    for (let i = 0; i < trek.length - 1; i++) {
-      const digits = new Set(
-        String(trek[i].seq)
-          .replace(/\[[^\]]*\]/g, "") // buang tag [h]..[/h], [m]ai[/m]
-          .replace(/[^0-9]/g, "")
-          .split("")
-          .filter((x) => x !== "")
-      );
-      if (digits.size === 0) continue;
-      perRes.set(trek[i + 1].res, digits);
-    }
-    for (const [res, digits] of perRes) {
-      if (!draws.has(res)) {
-        draws.set(res, { res, aiSets: [] });
-        order.push(res);
+    const mk = String(item.market || "?").toUpperCase();
+    if (!byMarket.has(mk)) byMarket.set(mk, []);
+    byMarket.get(mk).push(item);
+  });
+
+  const groups = [];
+  for (const [market, list] of byMarket) {
+    const treks = list.map((it) => parseTrek(it.trek_log));
+    const order = orderFromTreks(treks);
+    const draws = new Map(); // res -> [Set digit, ...]
+    list.forEach((item) => {
+      const trek = parseTrek(item.trek_log);
+      for (let i = 0; i < trek.length - 1; i++) {
+        const digits = digitsOf(trek[i].seq);
+        if (digits.size === 0) continue;
+        const res = trek[i + 1].res;
+        if (!draws.has(res)) draws.set(res, []);
+        draws.get(res).push(digits);
       }
-      draws.get(res).aiSets.push(digits);
-    }
-  });
-  return order.map((res) => {
-    const d = draws.get(res);
-    const covered = new Set();
-    d.aiSets.forEach((s) => s.forEach((x) => covered.add(x)));
-    const digits = String(res).split("");
-    const miss = digits.filter((x) => !covered.has(x));
-    return {
-      res,
-      hits: digits.length - miss.length,
-      total: digits.length,
-      missDigits: [...new Set(miss)],
-      rumusCount: d.aiSets.length,
-      pct: digits.length ? Math.round(((digits.length - miss.length) / digits.length) * 100) : 0,
-    };
-  });
+    });
+    const rows = order
+      .filter((res) => draws.has(res))
+      .map((res) => {
+        const aiSets = draws.get(res);
+        const covered = new Set();
+        aiSets.forEach((s) => s.forEach((x) => covered.add(x)));
+        const digits = String(res).split("");
+        const miss = digits.filter((x) => !covered.has(x));
+        return {
+          res,
+          hits: digits.length - miss.length,
+          total: digits.length,
+          missDigits: [...new Set(miss)],
+          rumusCount: aiSets.length,
+          pct: digits.length ? Math.round(((digits.length - miss.length) / digits.length) * 100) : 0,
+        };
+      });
+    groups.push({ market, rows });
+  }
+  return groups;
 }
 
-// Union angka main semua rumus untuk draw BERIKUTNYA (baris prediksi '?').
+// Union angka main semua rumus per market utk draw BERIKUTNYA (baris '?').
 export function buildNextDrawAI(items) {
-  const covered = new Set();
-  let n = 0;
+  const byMarket = new Map();
   items.forEach((item) => {
-    const trek = parseTrek(item.trek_log);
-    const last = trek[trek.length - 1];
-    if (!last) return;
-    const digits = String(last.seq)
-      .replace(/\[[^\]]*\]/g, "")
-      .replace(/[^0-9]/g, "")
-      .split("")
-      .filter((x) => x !== "");
-    if (!digits.length) return;
-    n++;
-    digits.forEach((x) => covered.add(x));
+    const mk = String(item.market || "?").toUpperCase();
+    if (!byMarket.has(mk)) byMarket.set(mk, []);
+    byMarket.get(mk).push(item);
   });
-  return { digits: [...covered].sort().join(""), n };
+  const out = [];
+  for (const [market, list] of byMarket) {
+    const covered = new Set();
+    let n = 0;
+    list.forEach((item) => {
+      const trek = parseTrek(item.trek_log);
+      const last = trek[trek.length - 1];
+      if (!last) return;
+      const digits = digitsOf(last.seq);
+      if (!digits.size) return;
+      n++;
+      digits.forEach((x) => covered.add(x));
+    });
+    out.push({ market, digits: [...covered].sort().join(""), n });
+  }
+  return out;
 }
 
 // B. Hot/Cold digit: ranking frekuensi digit dari semua ai koleksi.
@@ -157,7 +220,6 @@ function bar(pct, width = 10) {
 
 export function renderTrend(items) {
   const L = [];
-  const drawTrend = buildDrawTrend(items);
   const hotCold = buildHotCold(items);
   const streaks = buildStreaks(items);
 
@@ -177,26 +239,30 @@ export function renderTrend(items) {
 
   // ── A. Coverage per draw ──
   L.push("── A. COVERAGE ANGKA MAIN PER DRAW ──");
-  L.push("(patokan = 4 digit result; angka main = union AI semua rumus)", "");
-  if (drawTrend.length === 0) {
+  L.push("(patokan = 4 digit result; angka main = union AI rumus satu pasar)", "");
+  const groups = buildDrawTrend(items);
+  if (groups.length === 0 || groups.every((g) => g.rows.length === 0)) {
     L.push("(tidak ada data trek)");
   } else {
-    const show = drawTrend.slice(-20);
-    show.forEach((d) => {
-      const icon = d.pct === 100 ? "🔥" : d.pct >= 75 ? "➖" : "❄️";
-      const miss = d.missDigits.length ? ` — lepas: ${d.missDigits.join("")}` : "";
-      L.push(`${d.res} : ${d.hits}/${d.total} digit ${miss} ${bar(d.pct)} ${d.pct}% ${icon}`);
+    groups.forEach((g) => {
+      if (g.rows.length === 0) return;
+      L.push(`▶ ${g.market} (${g.rows.length} draw)`);
+      g.rows.forEach((d) => {
+        const icon = d.pct === 100 ? "🔥" : d.pct >= 75 ? "➖" : "❄️";
+        const miss = d.missDigits.length ? ` — lepas: ${d.missDigits.join("")}` : "";
+        L.push(`${d.res} : ${d.hits}/${d.total} digit${miss} ${bar(d.pct)} ${d.pct}% ${icon}`);
+      });
+      const avg =
+        g.rows.length
+          ? Math.round((g.rows.reduce((a, d) => a + d.pct, 0) / g.rows.length) * 10) / 10
+          : 0;
+      L.push(`  Rata-rata ${g.market}: ${avg}% ${avg === 100 ? "🔥 SEMPURNA" : avg >= 75 ? "➖ KUAT" : "❄️ LOLOSAN"}`);
+      L.push("");
     });
-    const avg = drawTrend.length
-      ? Math.round((drawTrend.reduce((a, d) => a + d.pct, 0) / drawTrend.length) * 10) / 10
-      : 0;
-    L.push("");
-    L.push(`Rata-rata coverage koleksi: ${avg}% ${avg === 100 ? "🔥 SEMPURNA" : avg >= 75 ? "➖ KUAT" : "❄️ LOLOSAN"}`);
-    L.push("");
     const next = buildNextDrawAI(items);
-    if (next.digits) {
-      L.push(`Angka main gabungan utk draw berikutnya: ${next.digits} (dari ${next.n} rumus)`);
-    }
+    next.forEach((nx) => {
+      if (nx.digits) L.push(`Angka main gabungan ${nx.market} utk draw berikutnya: ${nx.digits} (dari ${nx.n} rumus)`);
+    });
   }
   L.push("");
 

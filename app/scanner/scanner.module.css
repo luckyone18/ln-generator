@@ -372,6 +372,18 @@
 }
 
 /* ── Bank Rumus (sync bar) ─────────────────────────────── */
+.poolChip {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
 .syncBox {
   margin-top: 0.75rem;
   background: #f0f9ff;

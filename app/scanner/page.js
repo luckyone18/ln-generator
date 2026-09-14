@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   SCANNER_MARKETS,
@@ -78,6 +78,19 @@ export default function ScannerPage() {
 
   // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
   const [showTiers, setShowTiers] = useState("top"); // top | cad12 | all
+  const [poolFilter, setPoolFilter] = useState(""); // "" = semua pool
+
+  // Daftar pool unik dari koleksi (urut abjad)
+  const pools = useMemo(
+    () =>
+      [...new Set(savedItems.map((s) => String(s.market || "?").toUpperCase()).filter(Boolean))].sort(),
+    [savedItems]
+  );
+  // Koleksi tampil = filter pool aktif
+  const visibleItems = useMemo(
+    () => (poolFilter ? savedItems.filter((s) => String(s.market || "?").toUpperCase() === poolFilter) : savedItems),
+    [savedItems, poolFilter]
+  );
   const [deviceId, setDeviceId] = useState("");
   const [syncCode, setSyncCode] = useState("");
   const [syncState, setSyncState] = useState("idle"); // idle | syncing | saved | error
@@ -502,11 +515,11 @@ export default function ScannerPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectAll || checkedCodes.length === savedItems.length) {
+    if (selectAll || checkedCodes.length === visibleItems.length) {
       setCheckedCodes([]);
       setSelectAll(false);
     } else {
-      setCheckedCodes(savedItems.map((s) => s.code));
+      setCheckedCodes(visibleItems.map((s) => s.code));
       setSelectAll(true);
     }
   };
@@ -974,8 +987,35 @@ export default function ScannerPage() {
 
       <section className={styles.collectionPanel}>
         <div className={styles.collectionHead}>
-          <h2 className={styles.tableTitle}>📚 KOLEKSI RUMUS SAYA ({savedItems.length})</h2>
+          <h2 className={styles.tableTitle}>
+            📚 KOLEKSI RUMUS SAYA ({visibleItems.length}{poolFilter ? ` dari ${savedItems.length}` : ""})
+          </h2>
           <div className={styles.collectionToolbar}>
+            <select
+              value={poolFilter}
+              onChange={(e) => {
+                setPoolFilter(e.target.value);
+                // buang centang rumus yang tidak lagi terlihat
+                setCheckedCodes((prev) => {
+                  if (!e.target.value) return prev;
+                  const stillVisible = new Set(
+                    savedItems
+                      .filter((s) => String(s.market || "?").toUpperCase() === e.target.value)
+                      .map((s) => s.code)
+                  );
+                  return prev.filter((c) => stillVisible.has(c));
+                });
+              }}
+              className={styles.tierSelect}
+              title="Filter koleksi per pool/pasar"
+            >
+              <option value="">Pool: SEMUA</option>
+              {pools.map((p) => (
+                <option key={p} value={p}>
+                  Pool: {p}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               className={styles.btnRekap}
@@ -1136,6 +1176,7 @@ export default function ScannerPage() {
                     title="Pilih semua rumus"
                   />
                 </th>
+                <th>POOL</th>
                 <th>RMS</th>
                 <th>PRED</th>
                 <th>PJG</th>
@@ -1146,12 +1187,18 @@ export default function ScannerPage() {
             <tbody>
               {savedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className={styles.emptyCell}>
+                  <td colSpan={7} className={styles.emptyCell}>
                     Belum ada rumus yang disimpan.
                   </td>
                 </tr>
+              ) : visibleItems.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className={styles.emptyCell}>
+                    Tidak ada rumus dari pool {poolFilter}.
+                  </td>
+                </tr>
               ) : (
-                savedItems.map((item, idx) => (
+                visibleItems.map((item, idx) => (
                   <tr key={idx} className={styles.rowSaved}>
                     <td className={styles.cellChk}>
                       <input
@@ -1181,6 +1228,9 @@ export default function ScannerPage() {
                         {item.source === "original" ? "☁️ ASLI" : item.source === "manual" ? "✍️ MANUAL" : "⚡ LOKAL"}
                       </span>{" "}
                       {typeLabel(item.code)}
+                    </td>
+                    <td className={styles.cellPred}>
+                      <span className={styles.poolChip}>{String(item.market || "?").toUpperCase()}</span>
                     </td>
                     <td className={styles.cellPred}>{item.ai}</td>
                     <td className={styles.cellPjg}>{item.baris}</td>
