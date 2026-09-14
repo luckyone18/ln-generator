@@ -246,8 +246,11 @@ export function renderTrend(items) {
   } else {
     groups.forEach((g) => {
       if (g.rows.length === 0) return;
-      L.push(`▶ ${g.market} (${g.rows.length} draw)`);
-      g.rows.forEach((d) => {
+      // tampil max 20 draw terakhir per pasar (opsi A)
+      const show = g.rows.length > 20 ? g.rows.slice(-20) : g.rows;
+      const note = g.rows.length > 20 ? ` — 20 terakhir dari ${g.rows.length}` : "";
+      L.push(`▶ ${g.market}${note} (${show.length} draw)`);
+      show.forEach((d) => {
         const icon = d.pct === 100 ? "🔥" : d.pct >= 75 ? "➖" : "❄️";
         const miss = d.missDigits.length ? ` — lepas: ${d.missDigits.join("")}` : "";
         L.push(`${d.res} : ${d.hits}/${d.total} digit${miss} ${bar(d.pct)} ${d.pct}% ${icon}`);
