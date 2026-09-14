@@ -402,6 +402,9 @@ export default function RumusOtomatisPage() {
           <Link href="/scanner" className="btn btnBlue">
             SCANNER PRO
           </Link>
+          <Link href="/pembagi" className="btn btnBlue">
+            PEMBAGI ANGKA
+          </Link>
         </div>
       </header>
 
