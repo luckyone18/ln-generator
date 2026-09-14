@@ -32,8 +32,9 @@
 }
 
 .navPill {
-  background: #e2e8f0;
-  color: #334155;
+  background: #eef2ff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
   border-radius: 999px;
   padding: 0.35rem 0.9rem;
   font-size: 0.8rem;
@@ -43,7 +44,8 @@
 }
 
 .navPill:hover {
-  background: #3b82f6;
+  background: #6366f1;
+  border-color: #6366f1;
   color: #ffffff;
 }
 
@@ -115,13 +117,13 @@
 }
 
 .btnScanStart {
-  background: linear-gradient(135deg, #16a34a, #15803d);
-  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.4);
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
 }
 
 .btnScanStart:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.5);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5);
 }
 
 .btnScanStop {
@@ -246,56 +248,30 @@
 .btnTrend,
 .btnTrek,
 .btnDeleteSel {
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 0.4rem 0.9rem;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
   border: 1.5px solid transparent;
 }
 
-.btnRekap {
-  background: #f0fdf4;
-  color: #16a34a;
-  border-color: #86efac;
-}
-
-.btnRekap:hover:not(:disabled) {
-  background: #16a34a;
-  color: #ffffff;
-}
-
-.btnRekap4D {
-  background: #faf5ff;
-  color: #7e22ce;
-  border-color: #e9d5ff;
-}
-
-.btnRekap4D:hover:not(:disabled) {
-  background: #7e22ce;
-  color: #ffffff;
-}
-
-.btnTrend {
-  background: #f0fdfa;
-  color: #0d9488;
-  border-color: #99f6e4;
-}
-
-.btnTrend:hover:not(:disabled) {
-  background: #0d9488;
-  color: #ffffff;
-}
-
+.btnRekap,
+.btnRekap4D,
+.btnTrend,
 .btnTrek {
-  background: #eff6ff;
-  color: #2563eb;
-  border-color: #bfdbfe;
+  background: #eef2ff;
+  color: #4f46e5;
+  border-color: #c7d2fe;
 }
 
+.btnRekap:hover:not(:disabled),
+.btnRekap4D:hover:not(:disabled),
+.btnTrend:hover:not(:disabled),
 .btnTrek:hover:not(:disabled) {
-  background: #2563eb;
+  background: #6366f1;
+  border-color: #6366f1;
   color: #ffffff;
 }
 
@@ -306,7 +282,8 @@
 }
 
 .btnDeleteSel:hover:not(:disabled) {
-  background: #b91c1c;
+  background: #dc2626;
+  border-color: #dc2626;
   color: #ffffff;
 }
 
@@ -498,12 +475,12 @@
 }
 
 .tierSelect {
-  border: 1px solid #e9d5ff;
-  background: #faf5ff;
-  color: #7e22ce;
-  font-weight: 700;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 600;
   font-size: 0.72rem;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 0.4rem 0.5rem;
   cursor: pointer;
 }
