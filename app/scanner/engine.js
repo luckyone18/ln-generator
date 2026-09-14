@@ -200,10 +200,12 @@ export function evaluateRows(rows, activeCols, fCol, maxPatah) {
 }
 
 // Trek log sederhana untuk preview (mirip format Angkanet)
-export function buildTrekLog(rows, activeCols, fCol, formula, marks, ai) {
+export function buildTrekLog(rows, activeCols, fCol, formula, marks, ai, code = "") {
   const LABEL_MAP = { ai: "ai", ait: "at", aid: "ad", cb: "cb", k: "k", e: "e", a: "as", c: "kop", j: "j", jt: "jt", jd: "jd", s: "s", st: "st", sd: "sd", ai3d: "a3", ke: "ke" };
   const label = LABEL_MAP[fCol] || fCol;
-  const lines = ["Key    : " + formulaKey(formula), ""];
+  const lines = ["Key    : " + formulaKey(formula)];
+  if (code) lines.push("Code   : " + code);
+  lines.push("");
   const evalRows = rows.filter((r) => !r.is_ref);
   evalRows.forEach((row, i) => {
     const seqStr = activeCols.map((idx) => (row.seq && row.seq[idx] ? String(row.seq[idx].v) : "")).join("");

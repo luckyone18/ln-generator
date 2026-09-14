@@ -231,8 +231,9 @@ export function renderTrend(items) {
   items.forEach((it, i) => {
     const badge =
       it.source === "original" ? "☁️ ASLI" : it.source === "manual" ? "✍️ MANUAL" : it.source === "local" ? "⚡ LOKAL" : "";
+    const codeLine = it.code ? `\n    ${it.code}` : "";
     L.push(
-      `(${i + 1}) ${it.rumus_key || "-"} | ${(it.type || "?").padEnd(14)} | ai ${it.ai || "-"} ${badge}`
+      `(${i + 1}) ${it.rumus_key || "-"} | ${(it.type || "?").padEnd(14)} | ai ${it.ai || "-"} ${badge}${codeLine}`
     );
   });
   L.push("");

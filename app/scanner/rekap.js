@@ -217,7 +217,8 @@ export function buildMergedTrek(items) {
         .map((it, idx) => {
           const badge =
             it.source === "original" ? "☁️" : it.source === "manual" ? "✍️" : it.source === "local" ? "⚡" : "";
-          return `(${idx + 1}) ${it.rumus_key || "-"} | ${(it.type || "?").padEnd(14)} | ai ${it.ai || "-"} ${badge}`;
+          const codeLine = it.code ? `\n    ${it.code}` : "";
+          return `(${idx + 1}) ${it.rumus_key || "-"} | ${(it.type || "?").padEnd(14)} | ai ${it.ai || "-"} ${badge}${codeLine}`;
         })
         .join("\n") +
       "\n\n";

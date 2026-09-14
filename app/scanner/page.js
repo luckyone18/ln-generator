@@ -321,7 +321,7 @@ export default function ScannerPage() {
             }
 
             const trekText =
-              "Key    : " + autoKey + "\n\n" + trackLogArr.join("\n") + "\n\n" +
+              "Key    : " + autoKey + "\nCode   : " + code + "\n\n" + trackLogArr.join("\n") + "\n\n" +
               fCol.toUpperCase() + " : " + ai;
 
             item = {
@@ -414,7 +414,7 @@ export default function ScannerPage() {
                 patah: sparePatah,
                 ai: evalRes.ai,
                 colsKey,
-                trek_log: buildTrekLog(resp.rows, activeCols, fCol, formula, evalRes.marks, evalRes.ai),
+                trek_log: buildTrekLog(resp.rows, activeCols, fCol, formula, evalRes.marks, evalRes.ai, buildCode({ market, fCol, formula, limit, patah: sparePatah, days: day, activeCols })),
                 rumus_key: formulaKey(formula),
                 type: TYPE_MAP[fCol] || fCol.toUpperCase(),
                 market: market.toUpperCase(),
@@ -746,7 +746,7 @@ export default function ScannerPage() {
         patah: evalRes.patah,
         ai: evalRes.ai,
         colsKey: JSON.stringify([...activeCols].sort((a, b) => a - b)),
-        trek_log: buildTrekLog(resp.rows, activeCols, cfg.fCol, formula, evalRes.marks, evalRes.ai),
+        trek_log: buildTrekLog(resp.rows, activeCols, cfg.fCol, formula, evalRes.marks, evalRes.ai, code),
         rumus_key: formulaKey(formula),
         type: TYPE_MAP[cfg.fCol] || cfg.fCol.toUpperCase(),
         market: cfg.market.toUpperCase(),
