@@ -13,10 +13,50 @@
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-const SEED_DOMAINS = ["https://angkanet26.com", "https://angkanet29.com"];
+import { readJson, writeJson, kvReady } from "./kv.js";
+
+// Seed bisa dikontrol dari web (tanpa ubah kode): Supabase KV key `ln/seed-domains`.
+// Fallback bawaan kalau KV kosong/unreachable:
+const DEFAULT_SEEDS = ["https://angkanet26.com", "https://angkanet29.com"];
+const SEED_KEY = "***";
+
+let seedCache = { list: DEFAULT_SEEDS, at: 0 };
+
+async function getSeeds() {
+  if (Date.now() - seedCache.at < 5 * 60 * 1000) return seedCache.list;
+  try {
+    if (kvReady()) {
+      const data = await readJson(SEED_KEY, null);
+      const list = Array.isArray(data?.seeds)
+        ? data.seeds.map((s) => String(s).trim()).filter((s) => /^https?:\/\//.test(s))
+        : [];
+      if (list.length) seedCache = { list, at: Date.now() };
+    }
+  } catch {
+    /* KV mati → pakai cache/bawaan, scanner tetap hidup */
+  }
+  return seedCache.list;
+}
+
+export async function setSeedDomains(seeds) {
+  const list = [...new Set(seeds.map((s) => String(s).trim()).filter((s) => /^https?:\/\//.test(s)))];
+  if (!list.length) throw new Error("Tidak ada URL valid (harus mulai http:// atau https://)");
+  await writeJson(SEED_KEY, { seeds: list, updated_at: new Date().toISOString() });
+  seedCache = { list, at: Date.now() };
+  invalidate(); // paksa discovery ulang dengan seed baru
+  return list;
+}
+
+export async function getSeedDomains() {
+  return { seeds: await getSeeds(), builtin: DEFAULT_SEEDS };
+}
 
 let cache = { domain: null, filterNonce: null, scannerNonce: null, at: 0 };
 let inflight = null;
+
+export function currentDomain() {
+  return cache.domain;
+}
 
 function isFresh() {
   return cache.domain && Date.now() - cache.at < 10 * 60 * 1000;
@@ -28,7 +68,7 @@ async function discover() {
   if (!inflight) {
     inflight = (async () => {
       let lastErr = null;
-      for (const seed of SEED_DOMAINS) {
+      for (const seed of await getSeeds()) {
         try {
           const res = await fetch(`${seed}/rumus-otomatis/`, {
             headers: { "User-Agent": UA },
