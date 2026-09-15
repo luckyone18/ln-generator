@@ -3,22 +3,31 @@
 // Param `token` lama tetap diterima agar route tidak perlu banyak berubah (diabaikan).
 //
 // Tabel: public.ln_kv (key text PK, value jsonb, updated_at timestamptz)
-// Env  : SUPABASE_URL, SUPABASE_SERVICE_KEY (atau SUPABASE_ANON_KEY sbg fallback)
+// Env  : SUPABASE_URL + salah satu dari SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SERVICE_KEY
+//        / SUPABASE_SECRET_KEY / SUPABASE_ANON_KEY (urut prioritas).
 //        SUPABASE_SCHEMA default "public".
 
-const BASE = () => process.env.SUPABASE_URL || "";
-const KEY = () =>
-  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || "";
+const BASE = () => (process.env.SUPABASE_URL || "").replace(/^["']|["']$/g, "");
+function cred() {
+  return (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    ""
+  );
+}
 const SCHEMA = () => process.env.SUPABASE_SCHEMA || "public";
 
 export function kvReady() {
-  return Boolean(BASE() && KEY());
+  return Boolean(BASE() && cred());
 }
 
 function headers() {
+  const s = cred();
   return {
-    apikey: KEY(),
-    Authorization: `Bearer ${KEY()}`,
+    apikey: s,
+    Authorization: `Bearer ${s}`,
     "Content-Type": "application/json",
     "Accept": "application/json",
   };
