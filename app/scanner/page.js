@@ -75,6 +75,7 @@ export default function ScannerPage() {
   const [manualCode, setManualCode] = useState("");
   const [manualBusy, setManualBusy] = useState(false);
   const [manualMsg, setManualMsg] = useState("");
+  const [refreshBusyCode, setRefreshBusyCode] = useState(null); // code yang sedang di-refresh
 
   // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
   const [showTiers, setShowTiers] = useState("top"); // top | cad12 | all
@@ -771,6 +772,92 @@ export default function ScannerPage() {
     }
   };
 
+  // ── Refresh data rumus (re-fetch paito, update trek/ai/patah, rumus tetap) ──
+  const doRefreshRumus = async (code) => {
+    setManualMsg("");
+    const item =
+      savedItems.find((x) => x.code === code) || foundItems.find((x) => x.code === code);
+    if (!item) {
+      setManualMsg("Rumus tidak ditemukan di koleksi.");
+      return;
+    }
+    const cfg = decodeFormulaCode(code.replace(/^#/, ""));
+    if (!cfg || !cfg.market || !cfg.fCol) {
+      setManualMsg("Kode rumus tidak dapat diparsing utk refresh.");
+      return;
+    }
+    setRefreshBusyCode(code);
+    try {
+      // aktif = komplemen manualHidden
+      const isShio = ["s", "st", "sd"].includes(cfg.fCol);
+      const maxCols = isShio ? 12 : 10;
+      const activeCols = [];
+      for (let i = 0; i < maxCols; i++) if (!(cfg.manualHidden || []).includes(i)) activeCols.push(i);
+
+      const state = {
+        market: cfg.market,
+        limit: cfg.limit || 15,
+        days: cfg.days || [],
+        patah: 0,
+        fCol: cfg.fCol,
+        k1: cfg.k1, m1: cfg.m1, s1: cfg.s1, op1: cfg.op1 || "+",
+        k2: cfg.k2 ?? -1, m2: cfg.m2 ?? 1, s2: cfg.s2 ?? "off", op2: cfg.op2 || "+",
+        k3: cfg.k3 ?? -1, m3: cfg.m3 ?? 1, s3: cfg.s3 ?? "off",
+        sf: cfg.sf || "off",
+        hideEmpty: true,
+        targetD: 0,
+        showRef: 0,
+        manualHidden: cfg.manualHidden || [],
+        isFrozen: true,
+      };
+      const res = await fetch("/api/rumus-otomatis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state),
+      });
+      const resp = await res.json();
+      if (!resp || !resp.rows || resp.rows.length < 2) {
+        setManualMsg("Gagal memuat data paito terbaru. Coba lagi.");
+        return;
+      }
+      const evalRes = evaluateRows(resp.rows, activeCols, cfg.fCol, 99);
+      if (!evalRes) {
+        setManualMsg("Data paito terlalu sedikit utk dievaluasi ulang.");
+        return;
+      }
+
+      const formula = {
+        k1: cfg.k1, m1: cfg.m1, s1: cfg.s1,
+        op1: cfg.op1 || "+",
+        k2: cfg.k2 ?? -1, m2: cfg.m2 ?? 1, s2: cfg.s2 ?? "off",
+        op2: cfg.op2 || "+",
+        k3: cfg.k3 ?? -1, m3: cfg.m3 ?? 1, s3: cfg.s3 ?? "off",
+        sf: cfg.sf || "off",
+      };
+      const freshItem = {
+        ...item,
+        baris: evalRes.rowsEval,
+        patah: evalRes.patah,
+        ai: evalRes.ai,
+        colsKey: JSON.stringify([...activeCols].sort((a, b) => a - b)),
+        trek_log: buildTrekLog(resp.rows, activeCols, cfg.fCol, formula, evalRes.marks, evalRes.ai, item.code),
+        rumus_key: formulaKey(formula),
+      };
+      // update di saved & found
+      const updSaved = savedItems.map((x) => (x.code === code ? freshItem : x));
+      setSavedItems(updSaved);
+      if (foundItems.some((x) => x.code === code)) {
+        setFoundItems(foundItems.map((x) => (x.code === code ? freshItem : x)));
+      }
+      persistCollection(updSaved, deviceId);
+      setManualMsg(`♻️ ${item.rumus_key} di-refresh (patah ${evalRes.patah}, ai ${evalRes.ai}, baris ${evalRes.rowsEval})`);
+    } catch (err) {
+      setManualMsg(`Error refresh: ${err.message}`);
+    } finally {
+      setRefreshBusyCode(null);
+    }
+  };
+
   const typeLabel = (code) => parseCode(code).type;
 
   const syncStateLabel =
@@ -1245,6 +1332,15 @@ export default function ScannerPage() {
                       </button>
                     </td>
                     <td className={styles.cellAction}>
+                      <button
+                        type="button"
+                        onClick={() => doRefreshRumus(item.code)}
+                        className={styles.btnRefresh}
+                        disabled={refreshBusyCode === item.code}
+                        title="Refresh data rumus — re-fetch paito terbaru (update trek/AI/patah, kode rumus tetap)"
+                      >
+                        {refreshBusyCode === item.code ? "⏳" : "♻️"}
+                      </button>{" "}
                       <button
                         type="button"
                         onClick={() => deleteSaved(item.code)}
