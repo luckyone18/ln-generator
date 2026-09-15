@@ -247,6 +247,7 @@
 .btnRekap4D,
 .btnTrend,
 .btnTrek,
+.btnRefreshAll,
 .btnDeleteSel {
   border-radius: 8px;
   padding: 0.4rem 0.9rem;
@@ -260,7 +261,8 @@
 .btnRekap,
 .btnRekap4D,
 .btnTrend,
-.btnTrek {
+.btnTrek,
+.btnRefreshAll {
   background: #eef2ff;
   color: #4f46e5;
   border-color: #c7d2fe;
@@ -269,7 +271,8 @@
 .btnRekap:hover:not(:disabled),
 .btnRekap4D:hover:not(:disabled),
 .btnTrend:hover:not(:disabled),
-.btnTrek:hover:not(:disabled) {
+.btnTrek:hover:not(:disabled),
+.btnRefreshAll:hover:not(:disabled) {
   background: #6366f1;
   border-color: #6366f1;
   color: #ffffff;
@@ -291,6 +294,7 @@
 .btnRekap4D:disabled,
 .btnTrend:disabled,
 .btnTrek:disabled,
+.btnRefreshAll:disabled,
 .btnDeleteSel:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -834,4 +838,29 @@
   font-size: 0.75rem;
   color: #94a3b8;
   font-style: italic;
+}
+
+/* ── Kolom PJG live (strek kena/patah + jumlah baris eval) ── */
+.pjgStreak {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.pjgHit {
+  color: #059669;
+}
+
+.pjgMiss {
+  color: #dc2626;
+}
+
+.pjgNone {
+  color: #94a3b8;
+}
+
+.pjgBaris {
+  display: block;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 600;
 }

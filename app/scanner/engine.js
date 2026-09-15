@@ -199,6 +199,30 @@ export function evaluateRows(rows, activeCols, fCol, maxPatah) {
   return { patah: misses, ai, marks, rowsEval: evalRows.length - 1, lastRes: last.res };
 }
 
+// Hitung streak kena/patah beruntun dari draw terakhir berdasarkan marks.
+// marks: array dari evaluateRows (true=kena, false=patah, null=prediksi terakhir).
+// Walk mundur, lewati null/undefined, hitung berulang dari baris pert yang dinilai.
+export function streakFromMarks(marks) {
+  if (!Array.isArray(marks) || marks.length === 0) {
+    return { streak: 0, streakType: null };
+  }
+  let streak = 0;
+  let streakType = null; // 'hit' | 'miss'
+  for (let i = marks.length - 1; i >= 0; i--) {
+    const v = marks[i];
+    if (v === null || v === undefined) continue;
+    if (streakType === null) {
+      streakType = v ? "hit" : "miss";
+      streak = 1;
+    } else if ((v && streakType === "hit") || (!v && streakType === "miss")) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return { streak, streakType };
+}
+
 // Trek log sederhana untuk preview (mirip format Angkanet)
 export function buildTrekLog(rows, activeCols, fCol, formula, marks, ai, code = "") {
   const LABEL_MAP = { ai: "ai", ait: "at", aid: "ad", cb: "cb", k: "k", e: "e", a: "as", c: "kop", j: "j", jt: "jt", jd: "jd", s: "s", st: "st", sd: "sd", ai3d: "a3", ke: "ke" };

@@ -19,9 +19,10 @@ import {
   evaluateRows,
   buildCode,
   buildTrekLog,
+  streakFromMarks,
 } from "./engine";
 import { buildRekap, renderRekap, buildMergedTrek, buildRekap4D, renderRekap4D } from "./rekap";
-import { renderTrend } from "./trend";
+import { renderTrend, buildStreaks } from "./trend";
 import { decodeFormulaCode } from "../rumus-otomatis/decoder";
 import styles from "./scanner.module.css";
 
@@ -76,6 +77,7 @@ export default function ScannerPage() {
   const [manualBusy, setManualBusy] = useState(false);
   const [manualMsg, setManualMsg] = useState("");
   const [refreshBusyCode, setRefreshBusyCode] = useState(null); // code yang sedang di-refresh
+  const [bulkRefresh, setBulkRefresh] = useState(null); // { done, total, cur }
 
   // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
   const [showTiers, setShowTiers] = useState("top"); // top | cad12 | all
@@ -409,11 +411,14 @@ export default function ScannerPage() {
             const sparePatah = patah - evalRes.patah;
             const colsKey = JSON.stringify([...activeCols].sort((a, b) => a - b));
             if (!scanRef.current.items.some((x) => x.colsKey === colsKey)) {
+              const stk = streakFromMarks(evalRes.marks);
               item = {
                 code: buildCode({ market, fCol, formula, limit, patah: sparePatah, days: day, activeCols }),
                 baris: evalRes.rowsEval,
                 patah: sparePatah,
                 ai: evalRes.ai,
+                streak: stk.streak,
+                streakType: stk.streakType,
                 colsKey,
                 trek_log: buildTrekLog(resp.rows, activeCols, fCol, formula, evalRes.marks, evalRes.ai, buildCode({ market, fCol, formula, limit, patah: sparePatah, days: day, activeCols })),
                 rumus_key: formulaKey(formula),
@@ -741,11 +746,14 @@ export default function ScannerPage() {
         sf: cfg.sf || "off",
       };
       const code = raw.startsWith("#") ? raw : "#" + raw;
+      const stk = streakFromMarks(evalRes.marks);
       const item = {
         code,
         baris: evalRes.rowsEval,
         patah: evalRes.patah,
         ai: evalRes.ai,
+        streak: stk.streak,
+        streakType: stk.streakType,
         colsKey: JSON.stringify([...activeCols].sort((a, b) => a - b)),
         trek_log: buildTrekLog(resp.rows, activeCols, cfg.fCol, formula, evalRes.marks, evalRes.ai, code),
         rumus_key: formulaKey(formula),
@@ -772,21 +780,14 @@ export default function ScannerPage() {
     }
   };
 
-  // ── Refresh data rumus (re-fetch paito, update trek/ai/patah, rumus tetap) ──
-  const doRefreshRumus = async (code) => {
-    setManualMsg("");
-    const item =
-      savedItems.find((x) => x.code === code) || foundItems.find((x) => x.code === code);
-    if (!item) {
-      setManualMsg("Rumus tidak ditemukan di koleksi.");
-      return;
-    }
+  // ── Hitung ulang item dari paito terbaru (dipakai refresh tunggal & massal) ──
+  // Return { ok:true, freshItem, evalRes } atau { ok:false, error }. Kode rumus tetap.
+  const computeFreshItem = async (item) => {
+    const code = item.code;
     const cfg = decodeFormulaCode(code.replace(/^#/, ""));
     if (!cfg || !cfg.market || !cfg.fCol) {
-      setManualMsg("Kode rumus tidak dapat diparsing utk refresh.");
-      return;
+      return { ok: false, error: "Kode rumus tidak dapat diparsing utk refresh." };
     }
-    setRefreshBusyCode(code);
     try {
       // aktif = komplemen manualHidden
       const isShio = ["s", "st", "sd"].includes(cfg.fCol);
@@ -817,13 +818,11 @@ export default function ScannerPage() {
       });
       const resp = await res.json();
       if (!resp || !resp.rows || resp.rows.length < 2) {
-        setManualMsg("Gagal memuat data paito terbaru. Coba lagi.");
-        return;
+        return { ok: false, error: "Gagal memuat data paito terbaru. Coba lagi." };
       }
       const evalRes = evaluateRows(resp.rows, activeCols, cfg.fCol, 99);
       if (!evalRes) {
-        setManualMsg("Data paito terlalu sedikit utk dievaluasi ulang.");
-        return;
+        return { ok: false, error: "Data paito terlalu sedikit utk dievaluasi ulang." };
       }
 
       const formula = {
@@ -834,28 +833,126 @@ export default function ScannerPage() {
         k3: cfg.k3 ?? -1, m3: cfg.m3 ?? 1, s3: cfg.s3 ?? "off",
         sf: cfg.sf || "off",
       };
+      const { streak, streakType } = streakFromMarks(evalRes.marks);
       const freshItem = {
         ...item,
         baris: evalRes.rowsEval,
         patah: evalRes.patah,
         ai: evalRes.ai,
+        streak,
+        streakType,
         colsKey: JSON.stringify([...activeCols].sort((a, b) => a - b)),
         trek_log: buildTrekLog(resp.rows, activeCols, cfg.fCol, formula, evalRes.marks, evalRes.ai, item.code),
         rumus_key: formulaKey(formula),
       };
-      // update di saved & found
-      const updSaved = savedItems.map((x) => (x.code === code ? freshItem : x));
-      setSavedItems(updSaved);
-      if (foundItems.some((x) => x.code === code)) {
-        setFoundItems(foundItems.map((x) => (x.code === code ? freshItem : x)));
-      }
-      persistCollection(updSaved, deviceId);
-      setManualMsg(`♻️ ${item.rumus_key} di-refresh (patah ${evalRes.patah}, ai ${evalRes.ai}, baris ${evalRes.rowsEval})`);
+      return { ok: true, freshItem, evalRes };
     } catch (err) {
-      setManualMsg(`Error refresh: ${err.message}`);
-    } finally {
-      setRefreshBusyCode(null);
+      return { ok: false, error: `Error refresh: ${err.message}` };
     }
+  };
+
+  // ── Refresh satu rumus (re-fetch paito, update PJG/strek/ai/patah, rumus tetap) ──
+  const doRefreshRumus = async (code) => {
+    setManualMsg("");
+    const item =
+      savedItems.find((x) => x.code === code) || foundItems.find((x) => x.code === code);
+    if (!item) {
+      setManualMsg("Rumus tidak ditemukan di koleksi.");
+      return;
+    }
+    setRefreshBusyCode(code);
+    const res = await computeFreshItem(item);
+    setRefreshBusyCode(null);
+    if (!res.ok) {
+      setManualMsg(res.error);
+      return;
+    }
+    const updSaved = savedItems.map((x) => (x.code === code ? res.freshItem : x));
+    setSavedItems(updSaved);
+    if (foundItems.some((x) => x.code === code)) {
+      setFoundItems(foundItems.map((x) => (x.code === code ? res.freshItem : x)));
+    }
+    persistCollection(updSaved, deviceId);
+    const e = res.evalRes;
+    setManualMsg(
+      `♻️ ${item.rumus_key} di-refresh (patah ${e.patah}, ai ${e.ai}, baris ${e.rowsEval}, streak ${res.freshItem.streak}x)`
+    );
+  };
+
+  // ── Refresh massal rumus tercentang — sequential 1-per-1 + jeda (aman utk rate-limit) ──
+  const doRefreshChecked = async () => {
+    if (bulkRefresh) return;
+    if (!checkedCodes.length) {
+      setManualMsg("Centang minimal 1 rumus di Bank Rumus utk refresh massal.");
+      return;
+    }
+    const list = checkedCodes
+      .map((c) => savedItems.find((x) => x.code === c) || foundItems.find((x) => x.code === c))
+      .filter(Boolean);
+    const n = list.length;
+    const working = [...savedItems];
+    const workingFound = [...foundItems];
+    let okCount = 0;
+    let failCount = 0;
+    setBulkRefresh({ done: 0, total: n, cur: "" });
+    try {
+      for (let i = 0; i < n; i++) {
+        const it = list[i];
+        setBulkRefresh({ done: i, total: n, cur: it.rumus_key || it.code });
+        if (i > 0) await new Promise((r) => setTimeout(r, 400)); // jeda antar-request
+        const res = await computeFreshItem(it);
+        if (res.ok) {
+          const idx = working.findIndex((x) => x.code === it.code);
+          if (idx >= 0) working[idx] = res.freshItem;
+          const idxF = workingFound.findIndex((x) => x.code === it.code);
+          if (idxF >= 0) workingFound[idxF] = res.freshItem;
+          okCount++;
+        } else {
+          failCount++;
+        }
+      }
+      setSavedItems(working);
+      setFoundItems(workingFound);
+      persistCollection(working, deviceId);
+      setManualMsg(
+        `♻️ ${okCount}/${n} rumus di-refresh (PJG & trek ikut diperbarui)` +
+          (failCount ? ` — ${failCount} gagal` : "")
+      );
+    } catch (err) {
+      setManualMsg(`Error refresh massal: ${err.message}`);
+    } finally {
+      setBulkRefresh(null);
+    }
+  };
+
+  // ── Info kolom PJG: strek live + jumlah baris eval (fallback: hitung dari trek_log) ──
+  const pjgInfo = (item) => {
+    if (typeof item.streak === "number") {
+      return { streak: item.streak, streakType: item.streakType || null, baris: item.baris };
+    }
+    try {
+      const s = buildStreaks([item])[0];
+      return { streak: s.streak, streakType: s.streakType, baris: item.baris };
+    } catch {
+      return { streak: null, streakType: null, baris: item.baris };
+    }
+  };
+
+  const renderPjg = (item) => {
+    const p = pjgInfo(item);
+    const cls = !p.streak ? styles.pjgNone : p.streakType === "hit" ? styles.pjgHit : styles.pjgMiss;
+    const arrow = !p.streak ? "–" : p.streakType === "hit" ? "↑" : "↓";
+    return (
+      <span
+        title="PJG = strek kena/patah beruntun dari draw terakhir • brs = jumlah baris trek dievaluasi (window limit rumus)"
+        style={{ whiteSpace: "nowrap" }}
+      >
+        <span className={`${styles.pjgStreak} ${cls}`}>
+          {p.streak ?? 0}x {arrow}
+        </span>
+        <span className={styles.pjgBaris}>{item.baris} brs</span>
+      </span>
+    );
   };
 
   const typeLabel = (code) => parseCode(code).type;
@@ -1048,7 +1145,7 @@ export default function ScannerPage() {
                       </button>
                     </td>
                     <td className={styles.cellPred}>{item.ai}</td>
-                    <td className={styles.cellPjg}>{item.baris}</td>
+                    <td className={styles.cellPjg}>{renderPjg(item)}</td>
                     <td className={styles.cellAction}>
                       {item.patah === 0 ? (
                         <span className={styles.badgeOk}>✓ ok</span>
@@ -1162,6 +1259,19 @@ export default function ScannerPage() {
               title="Gabungkan trek seluruh rumus tercentang (max 10)"
             >
               🔀 TREK GABUNGAN
+            </button>
+            <button
+              type="button"
+              className={styles.btnRefreshAll}
+              onClick={doRefreshChecked}
+              disabled={bulkRefresh !== null || checkedCodes.length === 0}
+              title="Refresh data rumus tercentang — re-fetch paito terbaru satu per satu (update PJG/strek, trek, AI, patah; kode rumus tetap)"
+            >
+              {bulkRefresh
+                ? `⏳ ${bulkRefresh.done}/${bulkRefresh.total}${
+                    bulkRefresh.cur ? ` · ${String(bulkRefresh.cur).slice(0, 10)}` : ""
+                  }`
+                : `♻️ REFRESH (${checkedCodes.length})`}
             </button>
             <button
               type="button"
@@ -1321,7 +1431,7 @@ export default function ScannerPage() {
                       <span className={styles.poolChip}>{String(item.market || "?").toUpperCase()}</span>
                     </td>
                     <td className={styles.cellPred}>{item.ai}</td>
-                    <td className={styles.cellPjg}>{item.baris}</td>
+                    <td className={styles.cellPjg}>{renderPjg(item)}</td>
                     <td>
                       <button
                         type="button"
