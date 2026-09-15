@@ -1,14 +1,13 @@
 // GET /api/history?pool=singapore
-// Returns { pool, label, drawTimeWIB, updatedAt, rows, report } dari Vercel Blob.
+// Returns { pool, label, drawTimeWIB, updatedAt, rows, report } dari Supabase KV.
 import { POOLS } from "../../../scripts/paito-scraper.mjs";
-import { readJson } from "../../lib/blobio.js";
+import { readJson, kvReady } from "../../lib/kv.js";
 
 const BLOB_PREFIX = "ln";
 
 export async function GET(req) {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) {
-    return Response.json({ error: "Blob token tidak tersedia" }, { status: 500 });
+  if (!kvReady()) {
+    return Response.json({ error: "KV storage (Supabase) tidak tersedia" }, { status: 500 });
   }
   const url = new URL(req.url);
   const pool = url.searchParams.get("pool") || "singapore";
@@ -16,7 +15,7 @@ export async function GET(req) {
     return Response.json({ error: "Pool tidak dikenal" }, { status: 400 });
   }
 
-  const hist = await readJson(`${BLOB_PREFIX}/history/${pool}.json`, null, token);
+  const hist = await readJson(`${BLOB_PREFIX}/history/${pool}.json`, null);
   if (!hist) {
     return Response.json({
       pool,
@@ -29,7 +28,7 @@ export async function GET(req) {
     });
   }
 
-  const bt = await readJson(`${BLOB_PREFIX}/backtest/${pool}.json`, null, token);
+  const bt = await readJson(`${BLOB_PREFIX}/backtest/${pool}.json`, null);
   return Response.json({
     pool: hist.pool,
     label: hist.label,

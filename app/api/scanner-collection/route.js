@@ -1,6 +1,5 @@
 import { randomInt } from "node:crypto";
-import { list } from "@vercel/blob";
-import { readJson, writeJson } from "../../lib/blobio.js";
+import { readJson, writeJson, findBySyncCode, kvReady } from "../../lib/kv.js";
 
 const SYNC_CODE_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const SYNC_CODE_LENGTH = 8;
@@ -19,14 +18,13 @@ function generateSyncCode() {
   return `${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
 }
 
-function resolveToken() {
-  return process.env.BLOB_READ_WRITE_TOKEN || "";
+function kvCheck() {
+  return kvReady();
 }
 
 export async function GET(req) {
-  const token = resolveToken();
-  if (!token) {
-    return Response.json({ error: "Blob token tidak tersedia" }, { status: 500 });
+  if (!kvCheck()) {
+    return Response.json({ error: "KV storage (Supabase) tidak tersedia" }, { status: 500 });
   }
 
   const url = new URL(req.url);
@@ -48,7 +46,7 @@ export async function GET(req) {
       );
     }
     const key = `${BLOB_PREFIX}${deviceId}.json`;
-    const store = await readJson(key, null, token);
+    const store = await readJson(key, null);
     if (!store) {
       const fresh = {
         deviceId,
@@ -56,7 +54,7 @@ export async function GET(req) {
         items: [],
         updatedAt: new Date().toISOString(),
       };
-      await writeJson(key, fresh, token);
+      await writeJson(key, fresh);
       return Response.json(fresh);
     }
     return Response.json(store);
@@ -70,19 +68,14 @@ export async function GET(req) {
         { status: 400 }
       );
     }
+    const target = code.toUpperCase();
     try {
-      const listed = await list({
-        prefix: BLOB_PREFIX,
-        token,
-        limit: 1000,
-      });
-      const target = code.toUpperCase();
-      for (const blob of listed.blobs || []) {
-        const store = await readJson(blob.pathname, null, token);
-        if (store && store.syncCode && store.syncCode.toUpperCase() === target) {
-          return Response.json(store);
-        }
-      }
+      // Query JSONB langsung: value->>'syncCode' = target (hemat — tanpa scan semua key)
+      const store = await findBySyncCode(BLOB_PREFIX, target);
+      if (store) return Response.json(store);
+      // fallback lama: key = ln/scanner-collection/{syncCode}.json
+      const byKey = await readJson(`${BLOB_PREFIX}${target}.json`, null);
+      if (byKey && byKey.items && byKey.items.length) return Response.json(byKey);
       return Response.json(
         { error: "Kode sync tidak ditemukan" },
         { status: 404 }
@@ -97,9 +90,8 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const token = resolveToken();
-  if (!token) {
-    return Response.json({ error: "Blob token tidak tersedia" }, { status: 500 });
+  if (!kvCheck()) {
+    return Response.json({ error: "KV storage (Supabase) tidak tersedia" }, { status: 500 });
   }
 
   let body = {};
@@ -134,7 +126,7 @@ export async function POST(req) {
   }
 
   const key = `${BLOB_PREFIX}${deviceId}.json`;
-  const existing = await readJson(key, null, token);
+  const existing = await readJson(key, null);
   const syncCode =
     existing && typeof existing.syncCode === "string"
       ? existing.syncCode
@@ -147,7 +139,7 @@ export async function POST(req) {
     updatedAt: new Date().toISOString(),
   };
 
-  await writeJson(key, store, token);
+  await writeJson(key, store);
 
   return Response.json({
     ok: true,
