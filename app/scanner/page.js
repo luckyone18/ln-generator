@@ -656,6 +656,12 @@ export default function ScannerPage() {
     setTrekLog(renderTrend(items));
   };
 
+  // Trend satu rumus dari tombol 📈 di kolom STATUS (Bank Rumus)
+  const doTrendOne = (item) => {
+    if (!item || !item.code) return;
+    setTrekLog(renderTrend([item]));
+  };
+
   // ── Copy isi terminal ke clipboard ───────────────────────────────
   const copyTerminal = async () => {
     if (!trekLog) return;
@@ -1439,6 +1445,14 @@ export default function ScannerPage() {
                         onClick={() => openTrek(item.code)}
                       >
                         lihat trek
+                      </button>{" "}
+                      <button
+                        type="button"
+                        className={styles.btnTrendOne}
+                        onClick={() => doTrendOne(item)}
+                        title="Trend rumus ini saja — coverage per draw, hot/cold digit, streak (hasil di terminal)"
+                      >
+                        📈 trend
                       </button>
                     </td>
                     <td className={styles.cellAction}>

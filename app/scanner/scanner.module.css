@@ -654,6 +654,26 @@
   background: #c7d2fe;
 }
 
+.btnTrendOne {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #065f46;
+  background: #d1fae5;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #6ee7b7;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btnTrendOne:hover {
+  background: #a7f3d0;
+}
+
 .cellPred {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 800;
