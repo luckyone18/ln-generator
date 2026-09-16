@@ -489,6 +489,71 @@
   cursor: pointer;
 }
 
+/* Kolom favorit ⭐ di baris koleksi */
+.cellFav {
+  width: 34px;
+  text-align: center;
+}
+.btnFav {
+  background: transparent;
+  border: none;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: all 0.15s;
+}
+.btnFav:hover {
+  color: #f59e0b;
+  transform: scale(1.15);
+}
+.btnFavActive {
+  color: #f59e0b;
+}
+
+/* Bottom toolbar — aksi cepat tanpa scroll ke atas */
+.bottomToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.bottomToolbarLabel {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.btnFavFilter {
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1.5px solid transparent;
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+.btnFavFilter:hover:not(:disabled) {
+  background: #b45309;
+  border-color: #b45309;
+  color: #ffffff;
+}
+.btnFavFilterActive {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #ffffff;
+}
+
 .manualAddBox {
   background: #f8fafc;
   border: 1px dashed #cbd5e1;

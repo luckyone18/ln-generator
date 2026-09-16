@@ -82,6 +82,7 @@ export default function ScannerPage() {
   // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
   const [showTiers, setShowTiers] = useState("top"); // top | cad12 | all
   const [poolFilter, setPoolFilter] = useState(""); // "" = semua pool
+  const [favOnly, setFavOnly] = useState(false); // tampilkan hanya favorit
 
   // Daftar pool unik dari koleksi (urut abjad)
   const pools = useMemo(
@@ -89,11 +90,14 @@ export default function ScannerPage() {
       [...new Set(savedItems.map((s) => String(s.market || "?").toUpperCase()).filter(Boolean))].sort(),
     [savedItems]
   );
-  // Koleksi tampil = filter pool aktif
-  const visibleItems = useMemo(
-    () => (poolFilter ? savedItems.filter((s) => String(s.market || "?").toUpperCase() === poolFilter) : savedItems),
-    [savedItems, poolFilter]
-  );
+  // Koleksi tampil = filter pool aktif (+ opsi favorit saja)
+  const visibleItems = useMemo(() => {
+    let list = poolFilter
+      ? savedItems.filter((s) => String(s.market || "?").toUpperCase() === poolFilter)
+      : savedItems;
+    if (favOnly) list = list.filter((s) => s.fav);
+    return list;
+  }, [savedItems, poolFilter, favOnly]);
   const [deviceId, setDeviceId] = useState("");
   const [syncCode, setSyncCode] = useState("");
   const [syncState, setSyncState] = useState("idle"); // idle | syncing | saved | error
@@ -518,6 +522,15 @@ export default function ScannerPage() {
     setCheckedCodes((prev) =>
       prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
     );
+  };
+
+  // ── Favorit (tandai rumus yang disukai) ───────────────────────────
+  const toggleFav = (code) => {
+    const next = savedItems.map((s) =>
+      s.code === code ? { ...s, fav: !s.fav } : s
+    );
+    setSavedItems(next);
+    persistCollection(next, deviceId);
   };
 
   const toggleSelectAll = () => {
@@ -1380,6 +1393,7 @@ export default function ScannerPage() {
                     title="Pilih semua rumus"
                   />
                 </th>
+                <th title="Tandai rumus favorit yang Anda sukai">⭐</th>
                 <th>POOL</th>
                 <th>RMS</th>
                 <th>PRED</th>
@@ -1391,13 +1405,13 @@ export default function ScannerPage() {
             <tbody>
               {savedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className={styles.emptyCell}>
+                  <td colSpan={8} className={styles.emptyCell}>
                     Belum ada rumus yang disimpan.
                   </td>
                 </tr>
               ) : visibleItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className={styles.emptyCell}>
+                  <td colSpan={8} className={styles.emptyCell}>
                     Tidak ada rumus dari pool {poolFilter}.
                   </td>
                 </tr>
@@ -1411,6 +1425,18 @@ export default function ScannerPage() {
                         onChange={() => toggleCheck(item.code)}
                         className={styles.chkBulk}
                       />
+                    </td>
+                    <td className={styles.cellFav}>
+                      <button
+                        type="button"
+                        className={`${styles.btnFav} ${
+                          item.fav ? styles.btnFavActive : ""
+                        }`}
+                        onClick={() => toggleFav(item.code)}
+                        title={item.fav ? "Hapus dari favorit" : "Tandai sebagai favorit"}
+                      >
+                        {item.fav ? "★" : "☆"}
+                      </button>
                     </td>
                     <td className={styles.cellType}>
                       <span
@@ -1479,6 +1505,71 @@ export default function ScannerPage() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className={styles.bottomToolbar}>
+          <div className={styles.bottomToolbarLabel}>⚡ AKSI CEPAT</div>
+          <select
+            value={poolFilter}
+            onChange={(e) => {
+              setPoolFilter(e.target.value);
+              setCheckedCodes((prev) => {
+                if (!e.target.value) return prev;
+                const stillVisible = new Set(
+                  savedItems
+                    .filter((s) => String(s.market || "?").toUpperCase() === e.target.value)
+                    .map((s) => s.code)
+                );
+                return prev.filter((c) => stillVisible.has(c));
+              });
+            }}
+            className={styles.tierSelect}
+            title="Filter koleksi per pool/pasar"
+          >
+            <option value="">Pool: SEMUA</option>
+            {pools.map((p) => (
+              <option key={p} value={p}>
+                Pool: {p}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className={`${styles.btnFavFilter} ${favOnly ? styles.btnFavFilterActive : ""}`}
+            onClick={() => setFavOnly((v) => !v)}
+            title="Tampilkan hanya rumus favorit (★)"
+          >
+            {favOnly ? "★ FAVORIT ✓" : "☆ FAVORIT"}
+          </button>
+          <button
+            type="button"
+            className={styles.btnTrend}
+            onClick={doTrend}
+            title="Trend Gabungan — performa per draw, hot/cold digit, streak rumus"
+          >
+            📈 TREND
+          </button>
+          <button
+            type="button"
+            className={styles.btnRekap}
+            onClick={doRekap}
+            disabled={checkedCodes.length === 0}
+            title="Rekap semua formula tercentang menjadi tier TOP/CAD/MATI"
+          >
+            🧮 REKAP GABUNGAN
+          </button>
+          <button
+            type="button"
+            className={styles.btnRefreshAll}
+            onClick={doRefreshChecked}
+            disabled={bulkRefresh !== null || checkedCodes.length === 0}
+            title="Refresh data rumus tercentang — re-fetch paito terbaru"
+          >
+            {bulkRefresh
+              ? `⏳ ${bulkRefresh.done}/${bulkRefresh.total}${
+                  bulkRefresh.cur ? ` · ${String(bulkRefresh.cur).slice(0, 10)}` : ""
+                }`
+              : `♻️ REFRESH (${checkedCodes.length})`}
+          </button>
         </div>
         <p className={styles.privateNote}>
           🏠 Pribadi: Koleksi rumus ini hanya tersimpan di browser Anda dan tidak dapat dilihat oleh
