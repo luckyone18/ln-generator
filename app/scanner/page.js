@@ -142,6 +142,9 @@ export default function ScannerPage() {
   const [deviceId, setDeviceId] = useState("");
   const [syncCode, setSyncCode] = useState("");
   const [syncState, setSyncState] = useState("idle"); // idle | syncing | saved | error
+  const [packages, setPackages] = useState([]); // [{ id, name, codes[], createdAt }]
+  const packagesRef = useRef([]); // mirror utk persist yg selalu fresh
+  const [newPkgName, setNewPkgName] = useState("");
   const [claimCode, setClaimCode] = useState("");
   const [claimBusy, setClaimBusy] = useState(false);
   const [claimMsg, setClaimMsg] = useState("");
@@ -155,11 +158,12 @@ export default function ScannerPage() {
       localStorage.setItem("ln_sk_saved", JSON.stringify(next));
     } catch {}
     if (!thisDeviceId) return;
+    const packs = packagesRef.current || [];
     setSyncState("syncing");
     fetch("/api/scanner-collection", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId: thisDeviceId, items: next }),
+      body: JSON.stringify({ deviceId: thisDeviceId, items: next, packages: packs }),
     })
       .then((r) => r.json())
       .then((d) => {
@@ -199,6 +203,10 @@ export default function ScannerPage() {
       .then((d) => {
         if (bankInitRef.current) return;
         bankInitRef.current = true;
+        if (d && Array.isArray(d.packages)) {
+          setPackages(d.packages);
+          packagesRef.current = d.packages;
+        }
         if (d && Array.isArray(d.items) && d.syncCode) {
           setSyncCode(d.syncCode);
           const serverCount = d.items.length;
@@ -581,6 +589,74 @@ export default function ScannerPage() {
     );
     setSavedItems(next);
     persistCollection(next, deviceId);
+  };
+
+  // ── Bank Rumus: Paket Gabungan (simpan grup rumus tercentang) ──────
+  const syncPackages = (packs, items) => {
+    setPackages(packs);
+    packagesRef.current = packs;
+    // simpan ke localStorage + server (pakai savedItems saat ini kecuali di-override)
+    const cur = Array.isArray(items) ? items : savedItems;
+    try {
+      localStorage.setItem("ln_sk_saved", JSON.stringify(cur));
+    } catch {}
+    if (deviceId) {
+      setSyncState("syncing");
+      fetch("/api/scanner-collection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId, items: cur, packages: packs }),
+      })
+        .then((r) => r.json())
+        .then((d) => setSyncState(d && d.ok ? "saved" : "error"))
+        .catch(() => setSyncState("error"));
+    }
+  };
+
+  const savePackage = (name) => {
+    const codes = [...checkedCodes];
+    if (!codes.length) {
+      alert("Centang dulu minimal 1 rumus di Koleksi utk dibuat paket.");
+      return;
+    }
+    const id =
+      "pkg-" +
+      (crypto.randomUUID
+        ? crypto.randomUUID().replace(/-/g, "").slice(0, 14)
+        : Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+    const packs = [
+      ...packagesRef.current,
+      { id, name: String(name || "Paket").trim() || "Paket", codes, createdAt: Date.now() },
+    ];
+    syncPackages(packs);
+  };
+
+  const renamePackage = (id, name) => {
+    const packs = packagesRef.current.map((p) =>
+      p.id === id ? { ...p, name: String(name || p.name).trim() || p.name } : p
+    );
+    syncPackages(packs);
+  };
+
+  const deletePackage = (id) => {
+    const packs = packagesRef.current.filter((p) => p.id !== id);
+    syncPackages(packs);
+  };
+
+  const loadPackage = (id) => {
+    const p = packagesRef.current.find((x) => x.id === id);
+    if (!p) return;
+    // Centang rumus yang ada di paket (dan masih tersimpan)
+    const exist = new Set(savedItems.map((s) => s.code));
+    const hits = p.codes.filter((c) => exist.has(c));
+    setCheckedCodes(hits);
+    setSelectAll(false);
+    alert(`✅ Paket "${p.name}": ${hits.length} dari ${p.codes.length} rumus dicentang.`);
+  };
+
+  const clearChecked = () => {
+    setCheckedCodes([]);
+    setSelectAll(false);
   };
 
   const toggleSelectAll = () => {
@@ -1680,6 +1756,87 @@ export default function ScannerPage() {
                 }`
               : `♻️ REFRESH (${checkedCodes.length})`}
           </button>
+        </div>
+        <div className={styles.pkgPanel}>
+          <div className={styles.pkgHead}>📦 PAKET GABUNGAN</div>
+          <div className={styles.pkgRow}>
+            <input
+              type="text"
+              value={newPkgName}
+              onChange={(e) => setNewPkgName(e.target.value)}
+              placeholder="Nama paket (mis. Paket Senin SGP)"
+              className={styles.pkgInput}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  savePackage(newPkgName);
+                  setNewPkgName("");
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                savePackage(newPkgName);
+                setNewPkgName("");
+              }}
+              disabled={checkedCodes.length === 0}
+              className={styles.btnPkgSave}
+              title="Simpan rumus yang sedang dicentang jadi paket"
+            >
+              💾 SIMPAN ({checkedCodes.length})
+            </button>
+            <button
+              type="button"
+              onClick={clearChecked}
+              disabled={checkedCodes.length === 0}
+              className={styles.btnPkgClear}
+              title="Kosongkan semua centang"
+            >
+              ✖ kosongkan
+            </button>
+          </div>
+          {packages.length === 0 ? (
+            <div className={styles.pkgEmpty}>
+              Belum ada paket. Centang beberapa rumus di atas lalu simpan jadi paket.
+            </div>
+          ) : (
+            <div className={styles.pkgList}>
+              {packages.map((p) => (
+                <div key={p.id} className={styles.pkgItem}>
+                  <button
+                    type="button"
+                    onClick={() => loadPackage(p.id)}
+                    className={styles.pkgNameBtn}
+                    title={`Muat paket — centang ${p.codes.length} rumus (tersimpan utk yg masih ada)`}
+                  >
+                    📦 {p.name}
+                    <span className={styles.pkgCount}>· {p.codes.length} rumus</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnPkgRename}
+                    onClick={() => {
+                      const n = prompt("Nama paket baru:", p.name);
+                      if (n) renamePackage(p.id, n);
+                    }}
+                    title="Ubah nama paket"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnPkgDel}
+                    onClick={() => {
+                      if (confirm(`Hapus paket "${p.name}"?`)) deletePackage(p.id);
+                    }}
+                    title="Hapus paket"
+                  >
+                    🗑
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <p className={styles.privateNote}>
           🏠 Pribadi: Koleksi rumus ini hanya tersimpan di browser Anda dan tidak dapat dilihat oleh

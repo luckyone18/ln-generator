@@ -896,6 +896,135 @@
   cursor: wait;
 }
 
+/* ── Paket Gabungan (Bank Rumus) ────────────────────────────── */
+.pkgPanel {
+  margin-top: 0.9rem;
+  padding: 0.7rem 0.8rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+.pkgHead {
+  font-weight: 800;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #334155;
+  margin-bottom: 0.5rem;
+}
+.pkgRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.pkgInput {
+  flex: 1 1 180px;
+  min-width: 150px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.78rem;
+  background: #fff;
+  color: #0f172a;
+}
+.pkgInput:focus {
+  outline: none;
+  border-color: #10b981;
+}
+.btnPkgSave {
+  background: #059669;
+  border: none;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  border-radius: 8px;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnPkgSave:hover:enabled {
+  background: #047857;
+}
+.btnPkgSave:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btnPkgClear {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 0.72rem;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnPkgClear:hover:enabled {
+  background: #f1f5f9;
+}
+.btnPkgClear:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.pkgEmpty {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 0.5rem;
+}
+.pkgList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 0.55rem;
+}
+.pkgItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.35rem 0.45rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.pkgNameBtn {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f172a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.1rem 0;
+}
+.pkgNameBtn:hover {
+  color: #059669;
+}
+.pkgCount {
+  font-weight: 600;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+.btnPkgRename,
+.btnPkgDel {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 2px 4px;
+  opacity: 0.65;
+}
+.btnPkgRename:hover,
+.btnPkgDel:hover {
+  opacity: 1;
+  transform: scale(1.12);
+}
+
 .privateNote {
   font-size: 0.75rem;
   color: #64748b;

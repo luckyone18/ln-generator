@@ -52,6 +52,7 @@ export async function GET(req) {
         deviceId,
         syncCode: generateSyncCode(),
         items: [],
+        packages: [],
         updatedAt: new Date().toISOString(),
       };
       await writeJson(key, fresh);
@@ -101,7 +102,7 @@ export async function POST(req) {
     return Response.json({ error: "Body JSON tidak valid" }, { status: 400 });
   }
 
-  const { deviceId, items } = body;
+  const { deviceId, items, packages } = body;
 
   if (!deviceId || !DEVICE_ID_RE.test(deviceId)) {
     return Response.json({ error: "deviceId tidak valid" }, { status: 400 });
@@ -125,6 +126,28 @@ export async function POST(req) {
     );
   }
 
+  // packages lho: hanya terima objek valid (id, name, codes[])
+  let sanitizedPackages = Array.isArray(packages) ? packages : null;
+  if (sanitizedPackages !== null) {
+    sanitizedPackages = sanitizedPackages
+      .filter(
+        (p) =>
+          p &&
+          typeof p.id === "string" &&
+          typeof p.name === "string" &&
+          Array.isArray(p.codes)
+      )
+      .map((p) => ({
+        id: p.id,
+        name: String(p.name).slice(0, 80),
+        codes: p.codes
+          .filter((c) => typeof c === "string")
+          .slice(0, MAX_ITEMS),
+        createdAt: p.createdAt || Date.now(),
+      }))
+      .slice(0, 200);
+  }
+
   const key = `${BLOB_PREFIX}${deviceId}.json`;
   const existing = await readJson(key, null);
   const syncCode =
@@ -136,6 +159,7 @@ export async function POST(req) {
     deviceId,
     syncCode,
     items,
+    packages: sanitizedPackages ?? (existing?.packages || []),
     updatedAt: new Date().toISOString(),
   };
 
