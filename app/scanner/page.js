@@ -424,24 +424,38 @@ export default function ScannerPage() {
           continue;
         }
       } else {
-        // ── MODE B: engine lokal (filter_api) ──
-        const formula = randomFormula();
-        const state = buildState(market, {
-          fCol,
-          limit,
-          patah: curMaxPatah,
-          days: day,
-          formula,
-        });
-
-        let resp;
-        try {
-          const res = await fetch("/api/rumus-otomatis", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(state),
+        // ── MODE B: engine lokal (filter_api) — PARALLEL BATCH ──
+        // Evaluasi beberapa formula acak sekaligus per tick (bukan 1 per round-trip),
+        // buang bottleneck serial + sleep lama → scan jauh lebih cepat.
+        const PARALLEL = 5;
+        const batch = [];
+        for (let bi = 0; bi < PARALLEL; bi++) {
+          const formula = randomFormula();
+          batch.push({
+            formula,
+            state: buildState(market, {
+              fCol,
+              limit,
+              patah: curMaxPatah,
+              days: day,
+              formula,
+            }),
           });
-          resp = await res.json();
+        }
+
+        let responses = [];
+        try {
+          responses = await Promise.all(
+            batch.map((b) =>
+              fetch("/api/rumus-otomatis", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(b.state),
+              })
+                .then((r) => r.json())
+                .catch(() => null)
+            )
+          );
         } catch (err) {
           setStatusText(`_> KONEKSI ERROR : ${err.message}`);
           await new Promise((r) => setTimeout(r, 1200));
@@ -453,36 +467,44 @@ export default function ScannerPage() {
           return;
         }
 
-        if (resp && resp.rows) {
+        const collected = [];
+        for (let bi = 0; bi < batch.length; bi++) {
+          const resp = responses[bi];
+          const formula = batch[bi].formula;
+          if (!resp || !resp.rows) continue;
           const activeCols = resp.activeCols || [];
           // ENFORCE: jumlah digit prediksi harus = target DIGIT (spt scanner asli targetD)
-          if (activeCols.length !== digit) {
-            continue; // formula menghasilkan N digit lain → ditolak
-          }
+          if (activeCols.length !== digit) continue; // formula menghasilkan N digit lain → ditolak
           const evalRes = evaluateRows(resp.rows, activeCols, fCol, curMaxPatah);
-          if (evalRes) {
-            const sparePatah = patah - evalRes.patah;
-            const colsKey = JSON.stringify([...activeCols].sort((a, b) => a - b));
-            if (!scanRef.current.items.some((x) => x.colsKey === colsKey)) {
-              const stk = streakFromMarks(evalRes.marks);
-              item = {
-                code: buildCode({ market, fCol, formula, limit, patah: sparePatah, days: day, activeCols }),
-                baris: evalRes.rowsEval,
-                patah: sparePatah,
-                ai: evalRes.ai,
-                streak: stk.streak,
-                streakType: stk.streakType,
-                colsKey,
-                trek_log: buildTrekLog(resp.rows, activeCols, fCol, formula, evalRes.marks, evalRes.ai, buildCode({ market, fCol, formula, limit, patah: sparePatah, days: day, activeCols })),
-                rumus_key: formulaKey(formula),
-                type: TYPE_MAP[fCol] || fCol.toUpperCase(),
-                market: market.toUpperCase(),
-                days: day,
-                source: "local",
-              };
-            }
-          }
+          if (!evalRes) continue;
+          const sparePatah = patah - evalRes.patah;
+          const colsKey = JSON.stringify([...activeCols].sort((a, b) => a - b));
+          if (scanRef.current.items.some((x) => x.colsKey === colsKey)) continue;
+          const stk = streakFromMarks(evalRes.marks);
+          collected.push({
+            code: buildCode({ market, fCol, formula, limit, patah: sparePatah, days: day, activeCols }),
+            baris: evalRes.rowsEval,
+            patah: sparePatah,
+            ai: evalRes.ai,
+            streak: stk.streak,
+            streakType: stk.streakType,
+            colsKey,
+            trek_log: buildTrekLog(resp.rows, activeCols, fCol, formula, evalRes.marks, evalRes.ai, buildCode({ market, fCol, formula, limit, patah: sparePatah, days: day, activeCols })),
+            rumus_key: formulaKey(formula),
+            type: TYPE_MAP[fCol] || fCol.toUpperCase(),
+            market: market.toUpperCase(),
+            days: day,
+            source: "local",
+          });
         }
+        if (collected.length) {
+          scanRef.current.items.push(...collected);
+          setFoundItems([...scanRef.current.items]);
+          try {
+            localStorage.setItem("ln_sk_last_scan", JSON.stringify(scanRef.current.items));
+          } catch {}
+        }
+        item = null; // sudah di-push oleh blok parallel
       }
 
       if (item) {
