@@ -489,6 +489,21 @@
   cursor: pointer;
 }
 
+.cellDay {
+  width: 86px;
+  text-align: center;
+}
+.daySel {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.72rem;
+  border-radius: 6px;
+  padding: 0.28rem 0.3rem;
+  cursor: pointer;
+}
+
 /* Kolom favorit ⭐ di baris koleksi */
 .cellFav {
   width: 34px;

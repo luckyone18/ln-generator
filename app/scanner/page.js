@@ -573,6 +573,15 @@ export default function ScannerPage() {
     persistCollection(next, deviceId);
   };
 
+  // ── Atur hari item koleksi (kolom HARI, persist via sync) ─────────
+  const setItemDay = (code, day) => {
+    const next = savedItems.map((s) =>
+      s.code === code ? { ...s, days: day } : s
+    );
+    setSavedItems(next);
+    persistCollection(next, deviceId);
+  };
+
   const toggleSelectAll = () => {
     if (selectAll || checkedCodes.length === visibleItems.length) {
       setCheckedCodes([]);
@@ -1442,6 +1451,7 @@ export default function ScannerPage() {
                 </th>
                 <th title="Tandai rumus favorit yang Anda sukai">⭐</th>
                 <th>POOL</th>
+                <th>HARI</th>
                 <th>RMS</th>
                 <th>PRED</th>
                 <th>PJG</th>
@@ -1452,13 +1462,13 @@ export default function ScannerPage() {
             <tbody>
               {savedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className={styles.emptyCell}>
+                  <td colSpan={9} className={styles.emptyCell}>
                     Belum ada rumus yang disimpan.
                   </td>
                 </tr>
               ) : visibleItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className={styles.emptyCell}>
+                  <td colSpan={9} className={styles.emptyCell}>
                     Tidak ada rumus{poolFilter ? ` dari pool ${poolFilter}` : ""}
                     {dayFilter ? ` hari ${dayFilter}` : ""}.
                   </td>
@@ -1509,6 +1519,19 @@ export default function ScannerPage() {
                     </td>
                     <td className={styles.cellPred}>
                       <span className={styles.poolChip}>{String(item.market || "?").toUpperCase()}</span>
+                    </td>
+                    <td className={styles.cellDay}>
+                      <select
+                        value={normDay(item.days)}
+                        onChange={(e) => setItemDay(item.code, e.target.value)}
+                        className={styles.daySel}
+                        title="Hari rumus (gunakan utk filter Hari)"
+                      >
+                        <option value="">-- SEMUA HARI --</option>
+                        {DAY_OPTIONS.filter((d) => d.val).map((d) => (
+                          <option key={d.val} value={d.val}>{d.txt}</option>
+                        ))}
+                      </select>
                     </td>
                     <td className={styles.cellPred}>{item.ai}</td>
                     <td className={styles.cellPjg}>{renderPjg(item)}</td>
