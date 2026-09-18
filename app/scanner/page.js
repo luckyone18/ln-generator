@@ -1454,9 +1454,9 @@ export default function ScannerPage() {
                 <th title="Sumber rumus (server asli / engine lokal / manual)">
                   <span className={styles.cellType}>SRC</span>
                 </th>
+                <th title="Tipe rumus (AI / AID / CB / dst)">RMS</th>
                 <th>POOL</th>
                 <th>HARI</th>
-                <th>RMS</th>
                 <th>PRED</th>
                 <th>PJG</th>
                 <th>STATUS</th>
@@ -1520,6 +1520,7 @@ export default function ScannerPage() {
                         {item.source === "original" ? "☁️ ASLI" : item.source === "manual" ? "✍️ MANUAL" : "⚡ LOKAL"}
                       </span>
                     </td>
+                    <td className={styles.cellPred}>{typeLabel(item.code)}</td>
                     <td className={styles.cellPred}>
                       <span className={styles.poolChip}>{String(item.market || "?").toUpperCase()}</span>
                     </td>
@@ -1563,7 +1564,6 @@ export default function ScannerPage() {
                         </div>
                       )}
                     </td>
-                    <td className={styles.cellPred}>{typeLabel(item.code)}</td>
                     <td className={styles.cellPred}>{item.ai}</td>
                     <td className={styles.cellPjg}>{renderPjg(item)}</td>
                     <td>
