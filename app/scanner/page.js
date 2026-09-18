@@ -1518,8 +1518,7 @@ export default function ScannerPage() {
                         }
                       >
                         {item.source === "original" ? "☁️ ASLI" : item.source === "manual" ? "✍️ MANUAL" : "⚡ LOKAL"}
-                      </span>{" "}
-                      {typeLabel(item.code)}
+                      </span>
                     </td>
                     <td className={styles.cellPred}>
                       <span className={styles.poolChip}>{String(item.market || "?").toUpperCase()}</span>
@@ -1564,6 +1563,7 @@ export default function ScannerPage() {
                         </div>
                       )}
                     </td>
+                    <td className={styles.cellPred}>{typeLabel(item.code)}</td>
                     <td className={styles.cellPred}>{item.ai}</td>
                     <td className={styles.cellPjg}>{renderPjg(item)}</td>
                     <td>
