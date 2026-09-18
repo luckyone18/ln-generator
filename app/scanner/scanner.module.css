@@ -490,7 +490,7 @@
 }
 
 .cellDay {
-  width: 86px;
+  width: 96px;
   text-align: center;
 }
 .daySel {
@@ -502,6 +502,52 @@
   border-radius: 6px;
   padding: 0.28rem 0.3rem;
   cursor: pointer;
+}
+/* Tampil default HARI (teks otomatis + tombol ✏️); dropdown hanya saat edit */
+.dayAutoWrap,
+.dayEditWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.dayAutoTxt {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0f766e;
+  padding: 0.1rem 0.3rem;
+  border-bottom: 1px dashed #94a3b8;
+  min-width: 46px;
+}
+.btnDayEdit {
+  background: transparent;
+  border: none;
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+  padding: 1px 3px;
+}
+.btnDayEdit:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+.dayEditWrap .daySel {
+  max-width: 74px;
+}
+.btnDayOk {
+  background: #10b981;
+  border: none;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 1px 5px;
+  line-height: 1.3;
+}
+.btnDayOk:hover {
+  background: #059669;
 }
 
 /* Kolom favorit ⭐ di baris koleksi */

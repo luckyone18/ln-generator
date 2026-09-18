@@ -78,6 +78,7 @@ export default function ScannerPage() {
   const [manualMsg, setManualMsg] = useState("");
   const [refreshBusyCode, setRefreshBusyCode] = useState(null); // code yang sedang di-refresh
   const [bulkRefresh, setBulkRefresh] = useState(null); // { done, total, cur }
+  const [editDayCode, setEditDayCode] = useState(null); // code yg sedang di-edit hari (null = tampil teks)
 
   // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
   const [showTiers, setShowTiers] = useState("top"); // top | cad12 | all
@@ -1524,17 +1525,44 @@ export default function ScannerPage() {
                       <span className={styles.poolChip}>{String(item.market || "?").toUpperCase()}</span>
                     </td>
                     <td className={styles.cellDay}>
-                      <select
-                        value={normDay(item.days)}
-                        onChange={(e) => setItemDay(item.code, e.target.value)}
-                        className={styles.daySel}
-                        title="Hari rumus (gunakan utk filter Hari)"
-                      >
-                        <option value="">-- SEMUA HARI --</option>
-                        {DAY_OPTIONS.filter((d) => d.val).map((d) => (
-                          <option key={d.val} value={d.val}>{d.txt}</option>
-                        ))}
-                      </select>
+                      {editDayCode === item.code ? (
+                        <div className={styles.dayEditWrap}>
+                          <select
+                            value={normDay(item.days)}
+                            onChange={(e) => setItemDay(item.code, e.target.value)}
+                            className={styles.daySel}
+                            autoFocus
+                            title="Pilih hari lalu tekan ✓"
+                          >
+                            <option value="">-- SEMUA HARI --</option>
+                            {DAY_OPTIONS.filter((d) => d.val).map((d) => (
+                              <option key={d.val} value={d.val}>{d.txt}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className={styles.btnDayOk}
+                            onClick={() => setEditDayCode(null)}
+                            title="Selesai atur hari"
+                          >
+                            ✓
+                          </button>
+                        </div>
+                      ) : (
+                        <div className={styles.dayAutoWrap}>
+                          <span className={styles.dayAutoTxt}>
+                            {normDay(item.days) || "–"}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.btnDayEdit}
+                            onClick={() => setEditDayCode(item.code)}
+                            title="Atur hari rumus ini (opsional, per rumus)"
+                          >
+                            ✏️
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className={styles.cellPred}>{item.ai}</td>
                     <td className={styles.cellPjg}>{renderPjg(item)}</td>
