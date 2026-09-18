@@ -82,6 +82,7 @@ export default function ScannerPage() {
   // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
   const [showTiers, setShowTiers] = useState("top"); // top | cad12 | all
   const [poolFilter, setPoolFilter] = useState(""); // "" = semua pool
+  const [dayFilter, setDayFilter] = useState(""); // "" = semua hari
   const [favOnly, setFavOnly] = useState(false); // tampilkan hanya favorit
 
   // Daftar pool unik dari koleksi (urut abjad)
@@ -90,14 +91,53 @@ export default function ScannerPage() {
       [...new Set(savedItems.map((s) => String(s.market || "?").toUpperCase()).filter(Boolean))].sort(),
     [savedItems]
   );
-  // Koleksi tampil = filter pool aktif (+ opsi favorit saja)
+  // Normalisasi nama hari (case-insensitive thd DAY_OPTIONS; tak dikenal → apa adanya)
+  const dayList = DAY_OPTIONS.filter((d) => d.val).map((d) => d.val);
+  const normDay = (v) => {
+    const t = String(v || "").trim();
+    if (!t) return "";
+    const hit = dayList.find((d) => d.toLowerCase() === t.toLowerCase());
+    return hit || t;
+  };
+  // Daftar hari unik dari koleksi (urutan kalender Senin–Minggu, tak dikenal di akhir)
+  const days = useMemo(
+    () =>
+      [...new Set(savedItems.map((s) => normDay(s.days)).filter(Boolean))].sort((a, b) => {
+        const ia = dayList.indexOf(a);
+        const ib = dayList.indexOf(b);
+        if (ia === -1 && ib === -1) return a.localeCompare(b);
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [savedItems]
+  );
+  // Koleksi tampil = filter pool + hari aktif (+ opsi favorit saja)
   const visibleItems = useMemo(() => {
     let list = poolFilter
       ? savedItems.filter((s) => String(s.market || "?").toUpperCase() === poolFilter)
       : savedItems;
+    if (dayFilter) list = list.filter((s) => normDay(s.days) === dayFilter);
     if (favOnly) list = list.filter((s) => s.fav);
     return list;
-  }, [savedItems, poolFilter, favOnly]);
+  }, [savedItems, poolFilter, dayFilter, favOnly]);
+  // Buang centang rumus yang tidak lagi terlihat setelah filter berubah
+  const pruneChecked = (pool, day) => {
+    setCheckedCodes((prev) => {
+      if (!prev.length) return prev;
+      const stillVisible = new Set(
+        savedItems
+          .filter(
+            (s) =>
+              (!pool || String(s.market || "?").toUpperCase() === pool) &&
+              (!day || normDay(s.days) === day)
+          )
+          .map((s) => s.code)
+      );
+      return prev.filter((c) => stillVisible.has(c));
+    });
+  };
   const [deviceId, setDeviceId] = useState("");
   const [syncCode, setSyncCode] = useState("");
   const [syncState, setSyncState] = useState("idle"); // idle | syncing | saved | error
@@ -1192,23 +1232,14 @@ export default function ScannerPage() {
       <section className={styles.collectionPanel}>
         <div className={styles.collectionHead}>
           <h2 className={styles.tableTitle}>
-            📚 KOLEKSI RUMUS SAYA ({visibleItems.length}{poolFilter ? ` dari ${savedItems.length}` : ""})
+            📚 KOLEKSI RUMUS SAYA ({visibleItems.length}{poolFilter || dayFilter ? ` dari ${savedItems.length}` : ""})
           </h2>
           <div className={styles.collectionToolbar}>
             <select
               value={poolFilter}
               onChange={(e) => {
                 setPoolFilter(e.target.value);
-                // buang centang rumus yang tidak lagi terlihat
-                setCheckedCodes((prev) => {
-                  if (!e.target.value) return prev;
-                  const stillVisible = new Set(
-                    savedItems
-                      .filter((s) => String(s.market || "?").toUpperCase() === e.target.value)
-                      .map((s) => s.code)
-                  );
-                  return prev.filter((c) => stillVisible.has(c));
-                });
+                pruneChecked(e.target.value, dayFilter);
               }}
               className={styles.tierSelect}
               title="Filter koleksi per pool/pasar"
@@ -1217,6 +1248,22 @@ export default function ScannerPage() {
               {pools.map((p) => (
                 <option key={p} value={p}>
                   Pool: {p}
+                </option>
+              ))}
+            </select>
+            <select
+              value={dayFilter}
+              onChange={(e) => {
+                setDayFilter(e.target.value);
+                pruneChecked(poolFilter, e.target.value);
+              }}
+              className={styles.tierSelect}
+              title="Filter koleksi per hari"
+            >
+              <option value="">Hari: SEMUA</option>
+              {days.map((d) => (
+                <option key={d} value={d}>
+                  Hari: {d}
                 </option>
               ))}
             </select>
@@ -1412,7 +1459,8 @@ export default function ScannerPage() {
               ) : visibleItems.length === 0 ? (
                 <tr>
                   <td colSpan={8} className={styles.emptyCell}>
-                    Tidak ada rumus dari pool {poolFilter}.
+                    Tidak ada rumus{poolFilter ? ` dari pool ${poolFilter}` : ""}
+                    {dayFilter ? ` hari ${dayFilter}` : ""}.
                   </td>
                 </tr>
               ) : (
@@ -1512,15 +1560,7 @@ export default function ScannerPage() {
             value={poolFilter}
             onChange={(e) => {
               setPoolFilter(e.target.value);
-              setCheckedCodes((prev) => {
-                if (!e.target.value) return prev;
-                const stillVisible = new Set(
-                  savedItems
-                    .filter((s) => String(s.market || "?").toUpperCase() === e.target.value)
-                    .map((s) => s.code)
-                );
-                return prev.filter((c) => stillVisible.has(c));
-              });
+              pruneChecked(e.target.value, dayFilter);
             }}
             className={styles.tierSelect}
             title="Filter koleksi per pool/pasar"
@@ -1529,6 +1569,22 @@ export default function ScannerPage() {
             {pools.map((p) => (
               <option key={p} value={p}>
                 Pool: {p}
+              </option>
+            ))}
+          </select>
+          <select
+            value={dayFilter}
+            onChange={(e) => {
+              setDayFilter(e.target.value);
+              pruneChecked(poolFilter, e.target.value);
+            }}
+            className={styles.tierSelect}
+            title="Filter koleksi per hari"
+          >
+            <option value="">Hari: SEMUA</option>
+            {days.map((d) => (
+              <option key={d} value={d}>
+                Hari: {d}
               </option>
             ))}
           </select>
