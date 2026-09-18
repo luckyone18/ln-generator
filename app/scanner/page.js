@@ -381,7 +381,7 @@ export default function ScannerPage() {
               rumus_key: autoKey,
               type: TYPE_MAP[fCol] || fCol.toUpperCase(),
               market: market.toUpperCase(),
-              days: (Array.isArray(s.days) ? s.days[0] : s.days) || "",
+              days: (Array.isArray(s.days) ? s.days[0] : s.days) || day || "",
               source: "original",
             };
             madeProgress = true;
@@ -1450,6 +1450,9 @@ export default function ScannerPage() {
                   />
                 </th>
                 <th title="Tandai rumus favorit yang Anda sukai">⭐</th>
+                <th title="Sumber rumus (server asli / engine lokal / manual)">
+                  <span className={styles.cellType}>SRC</span>
+                </th>
                 <th>POOL</th>
                 <th>HARI</th>
                 <th>RMS</th>
@@ -1462,13 +1465,13 @@ export default function ScannerPage() {
             <tbody>
               {savedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className={styles.emptyCell}>
+                  <td colSpan={10} className={styles.emptyCell}>
                     Belum ada rumus yang disimpan.
                   </td>
                 </tr>
               ) : visibleItems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className={styles.emptyCell}>
+                  <td colSpan={10} className={styles.emptyCell}>
                     Tidak ada rumus{poolFilter ? ` dari pool ${poolFilter}` : ""}
                     {dayFilter ? ` hari ${dayFilter}` : ""}.
                   </td>
