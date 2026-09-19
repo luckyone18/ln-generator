@@ -85,6 +85,9 @@ export default function ScannerPage() {
   const [poolFilter, setPoolFilter] = useState(""); // "" = semua pool
   const [dayFilter, setDayFilter] = useState(""); // "" = semua hari
   const [favOnly, setFavOnly] = useState(false); // tampilkan hanya favorit
+  const [colPageSize, setColPageSize] = useState(20); // ukuran halaman tabel koleksi (0 = semua)
+  const [colPage, setColPage] = useState(0); // halaman aktif
+  const [colSearch, setColSearch] = useState(""); // cari kode/rumus/pred
 
   // Daftar pool unik dari koleksi (urut abjad)
   const pools = useMemo(
@@ -114,15 +117,30 @@ export default function ScannerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [savedItems]
   );
-  // Koleksi tampil = filter pool + hari aktif (+ opsi favorit saja)
+  // Koleksi tampil = filter pool + hari aktif (+ opsi favorit saja + search)
   const visibleItems = useMemo(() => {
     let list = poolFilter
       ? savedItems.filter((s) => String(s.market || "?").toUpperCase() === poolFilter)
       : savedItems;
     if (dayFilter) list = list.filter((s) => normDay(s.days) === dayFilter);
     if (favOnly) list = list.filter((s) => s.fav);
+    const q = colSearch.trim().toLowerCase();
+    if (q)
+      list = list.filter(
+        (s) =>
+          String(s.code || "").toLowerCase().includes(q) ||
+          String(s.rumus_key || "").toLowerCase().includes(q) ||
+          String(s.ai || "").toLowerCase().includes(q)
+      );
     return list;
-  }, [savedItems, poolFilter, dayFilter, favOnly]);
+  }, [savedItems, poolFilter, dayFilter, favOnly, colSearch]);
+  // Paginasi tampilan koleksi
+  const colTotalPages = colPageSize > 0 ? Math.max(1, Math.ceil(visibleItems.length / colPageSize)) : 1;
+  const safeColPage = Math.min(colPage, colTotalPages - 1);
+  const pagedItems = useMemo(() => {
+    if (!colPageSize) return visibleItems;
+    return visibleItems.slice(safeColPage * colPageSize, (safeColPage + 1) * colPageSize);
+  }, [visibleItems, colPageSize, safeColPage]);
   // Buang centang rumus yang tidak lagi terlihat setelah filter berubah
   const pruneChecked = (pool, day) => {
     setCheckedCodes((prev) => {
@@ -1375,6 +1393,31 @@ export default function ScannerPage() {
                 </option>
               ))}
             </select>
+            <input
+              type="search"
+              value={colSearch}
+              onChange={(e) => {
+                setColSearch(e.target.value);
+                setColPage(0);
+              }}
+              placeholder="🔍 cari kode / rumus / pred…"
+              className={styles.colSearch}
+              title="Cari rumus di koleksi (kode, formula, prediksi)"
+            />
+            <select
+              value={colPageSize}
+              onChange={(e) => {
+                setColPageSize(parseInt(e.target.value, 10));
+                setColPage(0);
+              }}
+              className={styles.tierSelect}
+              title="Jumlah baris tampil per halaman"
+            >
+              <option value={10}>10 / hal</option>
+              <option value={20}>20 / hal</option>
+              <option value={50}>50 / hal</option>
+              <option value={0}>Semua</option>
+            </select>
             <button
               type="button"
               className={styles.btnRekap}
@@ -1572,11 +1615,12 @@ export default function ScannerPage() {
                 <tr>
                   <td colSpan={10} className={styles.emptyCell}>
                     Tidak ada rumus{poolFilter ? ` dari pool ${poolFilter}` : ""}
-                    {dayFilter ? ` hari ${dayFilter}` : ""}.
+                    {dayFilter ? ` hari ${dayFilter}` : ""}
+                    {colSearch.trim() ? ` cocok "${colSearch.trim()}"` : ""}.
                   </td>
                 </tr>
               ) : (
-                visibleItems.map((item, idx) => (
+                pagedItems.map((item, idx) => (
                   <tr key={idx} className={styles.rowSaved}>
                     <td className={styles.cellChk}>
                       <input
@@ -1706,6 +1750,30 @@ export default function ScannerPage() {
             </tbody>
           </table>
         </div>
+        {colPageSize > 0 && colTotalPages > 1 && (
+          <div className={styles.colPager}>
+            <button
+              type="button"
+              onClick={() => setColPage((p) => Math.max(0, p - 1))}
+              disabled={safeColPage === 0}
+              className={styles.pagerBtn}
+            >
+              ← Prev
+            </button>
+            <span className={styles.pagerInfo}>
+              hal {safeColPage + 1} / {colTotalPages} · tampil {pagedItems.length} dari{" "}
+              {visibleItems.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => setColPage((p) => Math.min(colTotalPages - 1, p + 1))}
+              disabled={safeColPage >= colTotalPages - 1}
+              className={styles.pagerBtn}
+            >
+              Next →
+            </button>
+          </div>
+        )}
         <div className={styles.bottomToolbar}>
           <div className={styles.bottomToolbarLabel}>⚡ AKSI CEPAT</div>
           <select
