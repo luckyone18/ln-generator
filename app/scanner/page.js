@@ -132,6 +132,7 @@ export default function ScannerPage() {
       );
     return list;
   }, [savedItems, poolFilter, dayFilter, favOnly, colSearch]);
+
   // Buang centang rumus yang tidak lagi terlihat setelah filter berubah
   const pruneChecked = (pool, day) => {
     setCheckedCodes((prev) => {
@@ -154,6 +155,23 @@ export default function ScannerPage() {
   const [packages, setPackages] = useState([]); // [{ id, name, codes[], createdAt }]
   const packagesRef = useRef([]); // mirror utk persist yg selalu fresh
   const [newPkgName, setNewPkgName] = useState("");
+
+  // 📦 Paket yang tampil = hanya paket yang memuat rumus dari pool aktif;
+  // hitungan rumus per paket ikut disesuaikan dgn pool tsb
+  const marketByCode = useMemo(() => {
+    const m = {};
+    for (const s of savedItems) m[s.code] = String(s.market || "?").toUpperCase();
+    return m;
+  }, [savedItems]);
+  const visiblePackages = useMemo(() => {
+    if (!poolFilter) return packages.map((p) => ({ ...p, showCodes: p.codes }));
+    return packages
+      .map((p) => ({
+        ...p,
+        showCodes: p.codes.filter((c) => marketByCode[c] === poolFilter),
+      }))
+      .filter((p) => p.showCodes.length > 0);
+  }, [packages, poolFilter, marketByCode]);
   const [claimCode, setClaimCode] = useState("");
   const [claimBusy, setClaimBusy] = useState(false);
   const [claimMsg, setClaimMsg] = useState("");
@@ -1817,7 +1835,12 @@ export default function ScannerPage() {
           </button>
         </div>
         <div className={styles.pkgPanel}>
-          <div className={styles.pkgHead}>📦 PAKET GABUNGAN</div>
+          <div className={styles.pkgHead}>
+            📦 PAKET GABUNGAN
+            {poolFilter && (
+              <span className={styles.pkgPoolTag}>pool: {poolFilter} saja</span>
+            )}
+          </div>
           <div className={styles.pkgRow}>
             <input
               type="text"
@@ -1854,22 +1877,38 @@ export default function ScannerPage() {
               ✖ kosongkan
             </button>
           </div>
-          {packages.length === 0 ? (
+          {visiblePackages.length === 0 ? (
             <div className={styles.pkgEmpty}>
-              Belum ada paket. Centang beberapa rumus di atas lalu simpan jadi paket.
+              {packages.length === 0
+                ? "Belum ada paket. Centang beberapa rumus di atas lalu simpan jadi paket."
+                : `Tidak ada paket yang memakai rumus pool ${poolFilter}. Ganti pool ke SEMUA utk melihat semua paket.`}
             </div>
           ) : (
             <div className={styles.pkgList}>
-              {packages.map((p) => (
+              {visiblePackages.map((p) => (
                 <div key={p.id} className={styles.pkgItem}>
                   <button
                     type="button"
-                    onClick={() => loadPackage(p.id)}
+                    onClick={() => {
+                      // saat pool aktif: muat hanya rumus paket yg belong ke pool itu
+                      if (poolFilter) {
+                        setCheckedCodes(p.showCodes);
+                      } else {
+                        loadPackage(p.id);
+                      }
+                    }}
                     className={styles.pkgNameBtn}
-                    title={`Muat paket — centang ${p.codes.length} rumus (tersimpan utk yg masih ada)`}
+                    title={
+                      poolFilter
+                        ? `Muat ${p.showCodes.length} rumus paket ini pada pool ${poolFilter}`
+                        : `Muat paket — centang ${p.codes.length} rumus (tersimpan utk yg masih ada)`
+                    }
                   >
                     📦 {p.name}
-                    <span className={styles.pkgCount}>· {p.codes.length} rumus</span>
+                    <span className={styles.pkgCount}>
+                      · {poolFilter ? `${p.showCodes.length}/${p.codes.length}` : p.codes.length}{" "}
+                      rumus
+                    </span>
                   </button>
                   <button
                     type="button"

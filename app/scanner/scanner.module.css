@@ -1000,6 +1000,22 @@
   flex-direction: column;
   gap: 6px;
   margin-top: 0.55rem;
+  /* jendela ±10 baris paket — sisanya scroll ke bawah (gaya bank rumus) */
+  max-height: 26.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+.pkgPoolTag {
+  margin-left: 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  padding: 1px 8px;
+  vertical-align: 2px;
 }
 .pkgItem {
   display: flex;
