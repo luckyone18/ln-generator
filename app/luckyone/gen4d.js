@@ -89,8 +89,16 @@ export default function Gen4D() {
 
   const setBox = (i, v) => setRaws((prev) => prev.map((x, j) => (j === i ? v : x)));
 
-  const doCopy = async () => {
-    const text = shown.join(sep === "\n" ? "\n" : sep);
+  // 🎲 hasil 3D: buang digit pertama dari tiap 4D, lalu dedup (Set menjamin unik)
+  const results3D = useMemo(() => {
+    const seen = new Set();
+    for (const r of results) seen.add(r.slice(1));
+    return [...seen];
+  }, [results]);
+  const shown3D = useMemo(() => (q ? results3D.filter((r) => r.includes(q)) : results3D), [results3D, q]);
+
+  const doCopy = async (list) => {
+    const text = list.join(sep === "\n" ? "\n" : sep);
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
@@ -190,18 +198,18 @@ export default function Gen4D() {
           <span>
             {q ? (
               <>
-                Ditemukan: <b>{shown.length}</b> dari {results.length} angka 4D untuk{" "}
-                <b>{q}</b>
+                Ditemukan: <b>{shown.length}</b>×4D · <b>{shown3D.length}</b>×3D dari{" "}
+                {results.length} angka 4D untuk <b>{q}</b>
               </>
             ) : (
               <>
-                Hasil: <b>{results.length}</b> angka 4D
+                Hasil: <b>{results.length}</b> angka 4D · <b>{results3D.length}</b> angka 3D
               </>
             )}
             {totalBad ? ` · ${totalBad} token diabaikan` : ""}
           </span>
-          <button type="button" className={styles.btnCopy} onClick={doCopy} disabled={!shown.length}>
-            {copied ? "✓ tersalin" : q ? "📋 COPY HASIL CARI" : "📋 COPY SEMUA"}
+          <button type="button" className={styles.btnCopy} onClick={() => doCopy(shown)} disabled={!shown.length}>
+            {copied ? "✓ tersalin" : q ? "📋 COPY 4D CARI" : "📋 COPY 4D"}
           </button>
         </section>
 
@@ -223,6 +231,42 @@ export default function Gen4D() {
             <span className={styles.idle}>Isi minimal 1 kotak…</span>
           )}
         </div>
+
+        {results.length > 0 && (
+          <>
+            <section className={styles.outHead}>
+              <span>
+                Turunan 3D{" "}
+                <em className={styles.hint3d}>(hapus digit pertama, sudah tanpa duplikat)</em>
+              </span>
+              <button
+                type="button"
+                className={styles.btnCopy}
+                onClick={() => doCopy(shown3D)}
+                disabled={!shown3D.length}
+              >
+                {copied ? "✓ tersalin" : q ? "📋 COPY 3D CARI" : "📋 COPY 3D"}
+              </button>
+            </section>
+
+            <div className={styles.resultBox}>
+              {shown3D.length ? (
+                sep === "\n" ? (
+                  shown3D.map((r) => <div key={r}>{renderToken(r)}</div>)
+                ) : (
+                  shown3D.map((r, i) => (
+                    <span key={r}>
+                      {renderToken(r)}
+                      {i < shown3D.length - 1 ? sep : ""}
+                    </span>
+                  ))
+                )
+              ) : (
+                <span className={styles.idle}>Tidak ada 3D yang mengandung “{q}”…</span>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </main>
   );
