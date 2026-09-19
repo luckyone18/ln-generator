@@ -61,7 +61,8 @@ export default function Gen4D() {
   const parsed = useMemo(() => raws.map(parse2D), [raws]);
   const results = useMemo(() => {
     const raw = build4D(parsed.map((p) => p.ok));
-    const isTwin = (v) => v.slice(0, 2) === v.slice(2, 4);
+    // twin = ada digit kembar di dalam 4D (mis. 1211, 1122, 1212)
+    const isTwin = (v) => new Set(v.split("")).size < v.length;
     if (twin === "no") return raw.filter((v) => !isTwin(v));
     if (twin === "only") return raw.filter(isTwin);
     return raw;
@@ -136,8 +137,8 @@ export default function Gen4D() {
             Twin:{" "}
             <select value={twin} onChange={(e) => setTwin(e.target.value)} className={styles.sepSel}>
               <option value="all">sertakan (semua)</option>
-              <option value="no">no twin (buang kembar)</option>
-              <option value="only">hanya twin</option>
+              <option value="no">no twin (4 digit beda semua)</option>
+              <option value="only">hanya twin (ada digit kembar)</option>
             </select>
           </label>
           <button
