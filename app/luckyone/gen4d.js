@@ -55,10 +55,17 @@ function build4D(boxes) {
 export default function Gen4D() {
   const [raws, setRaws] = useState(["", "", ""]);
   const [sep, setSep] = useState("*");
+  const [twin, setTwin] = useState("all"); // all=sertakan, no=tanpa, only=hanya twin
   const [copied, setCopied] = useState(false);
 
   const parsed = useMemo(() => raws.map(parse2D), [raws]);
-  const results = useMemo(() => build4D(parsed.map((p) => p.ok)), [parsed]);
+  const results = useMemo(() => {
+    const raw = build4D(parsed.map((p) => p.ok));
+    const isTwin = (v) => v.slice(0, 2) === v.slice(2, 4);
+    if (twin === "no") return raw.filter((v) => !isTwin(v));
+    if (twin === "only") return raw.filter(isTwin);
+    return raw;
+  }, [parsed, twin]);
   const totalBad = parsed.reduce((n, p) => n + p.bad.length, 0);
 
   const setBox = (i, v) => setRaws((prev) => prev.map((x, j) => (j === i ? v : x)));
@@ -123,6 +130,14 @@ export default function Gen4D() {
               <option value=",">koma</option>
               <option value="|">garis tegak |</option>
               <option value={"\n"}>baris baru</option>
+            </select>
+          </label>
+          <label className={styles.sepWrap}>
+            Twin:{" "}
+            <select value={twin} onChange={(e) => setTwin(e.target.value)} className={styles.sepSel}>
+              <option value="all">sertakan (semua)</option>
+              <option value="no">no twin (buang kembar)</option>
+              <option value="only">hanya twin</option>
             </select>
           </label>
           <button
