@@ -39,12 +39,16 @@ function build4D(boxes) {
       for (let j = 0; j < arr.length; j++) if (i !== j) push(arr[i] + arr[j]);
     return out;
   }
-  // >=2 kotak: tiap KOTAK dipasangkan dua arah dengan kotak lainnya
-  for (let a = 0; a < filled.length; a++)
-    for (let b = 0; b < filled.length; b++) {
-      if (a === b) continue;
-      for (const x of filled[a]) for (const y of filled[b]) push(x + y);
-    }
+  // >=2 kotak: tiap KOTAK dipasangkan dua arah dengan kotak lainnya,
+  // urutan grup: pasangan terdekat dulu — (0,1),(1,0),(1,2),(2,1),(0,2),(2,0)
+  const groups = [];
+  for (let d = 1; d < filled.length; d++)
+    for (let a = 0; a + d < filled.length; a++) groups.push([a, a + d]);
+  // dua pass: jarak ascending, tiap grup arah maju lalu mundur
+  for (const [a, b] of groups) {
+    for (const x of filled[a]) for (const y of filled[b]) push(x + y);
+    for (const x of filled[b]) for (const y of filled[a]) push(x + y);
+  }
   return out;
 }
 
