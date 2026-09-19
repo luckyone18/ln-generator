@@ -56,6 +56,7 @@ export default function Gen4D() {
   const [raws, setRaws] = useState(["", "", ""]);
   const [sep, setSep] = useState("*");
   const [twin, setTwin] = useState("all"); // all=sertakan, no=tanpa, only=hanya twin
+  const [find, setFind] = useState(""); // cari angka di hasil 4D
   const [copied, setCopied] = useState(false);
 
   const parsed = useMemo(() => raws.map(parse2D), [raws]);
@@ -69,10 +70,27 @@ export default function Gen4D() {
   }, [parsed, twin]);
   const totalBad = parsed.reduce((n, p) => n + p.bad.length, 0);
 
+  // 🔎 saring hasil: hanya 4D yang mengandung angka yang dicari
+  const q = find.replace(/\D/g, "");
+  const shown = useMemo(() => (q ? results.filter((r) => r.includes(q)) : results), [results, q]);
+
+  // render hasil dengan highlight potongan yang cocok
+  const renderToken = (r) => {
+    const i = q ? r.indexOf(q) : -1;
+    if (i < 0) return r;
+    return (
+      <>
+        {r.slice(0, i)}
+        <span className={styles.hit}>{r.slice(i, i + q.length)}</span>
+        {r.slice(i + q.length)}
+      </>
+    );
+  };
+
   const setBox = (i, v) => setRaws((prev) => prev.map((x, j) => (j === i ? v : x)));
 
   const doCopy = async () => {
-    const text = results.join(sep);
+    const text = shown.join(sep === "\n" ? "\n" : sep);
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
@@ -151,22 +169,56 @@ export default function Gen4D() {
           </button>
         </div>
 
+        <div className={styles.findRow}>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={find}
+            onChange={(e) => setFind(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            placeholder="🔎 temukan angka… mis. 34 atau 1234"
+            className={styles.findInput}
+            disabled={!results.length}
+          />
+          {find && (
+            <button type="button" className={styles.btnClear} onClick={() => setFind("")}>
+              ✖
+            </button>
+          )}
+        </div>
+
         <section className={styles.outHead}>
           <span>
-            Hasil: <b>{results.length}</b> angka 4D{totalBad ? ` · ${totalBad} token diabaikan` : ""}
+            {q ? (
+              <>
+                Ditemukan: <b>{shown.length}</b> dari {results.length} angka 4D untuk{" "}
+                <b>{q}</b>
+              </>
+            ) : (
+              <>
+                Hasil: <b>{results.length}</b> angka 4D
+              </>
+            )}
+            {totalBad ? ` · ${totalBad} token diabaikan` : ""}
           </span>
-          <button type="button" className={styles.btnCopy} onClick={doCopy} disabled={!results.length}>
-            {copied ? "✓ tersalin" : "📋 COPY SEMUA"}
+          <button type="button" className={styles.btnCopy} onClick={doCopy} disabled={!shown.length}>
+            {copied ? "✓ tersalin" : q ? "📋 COPY HASIL CARI" : "📋 COPY SEMUA"}
           </button>
         </section>
 
         <div className={styles.resultBox}>
-          {results.length ? (
+          {shown.length ? (
             sep === "\n" ? (
-              results.map((r) => <div key={r}>{r}</div>)
+              shown.map((r) => <div key={r}>{renderToken(r)}</div>)
             ) : (
-              results.join(sep)
+              shown.map((r, i) => (
+                <span key={r}>
+                  {renderToken(r)}
+                  {i < shown.length - 1 ? sep : ""}
+                </span>
+              ))
             )
+          ) : results.length ? (
+            <span className={styles.idle}>Tidak ada 4D yang mengandung “{q}”…</span>
           ) : (
             <span className={styles.idle}>Isi minimal 1 kotak…</span>
           )}
