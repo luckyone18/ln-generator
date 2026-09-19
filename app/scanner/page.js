@@ -776,12 +776,28 @@ export default function ScannerPage() {
       });
       const next = merged.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
       setSavedItems(next);
+      // Paket gabungan ikut diambil: merge unik by id, hindari nama dobel
+      const curPacks = packagesRef.current || [];
+      const incoming = Array.isArray(data.packages) ? data.packages : [];
+      const mergedPacks = [...curPacks];
+      let addedPacks = 0;
+      incoming.forEach((p) => {
+        if (!p || typeof p.id !== "string" || !Array.isArray(p.codes)) return;
+        if (mergedPacks.some((q) => q.id === p.id)) return; // sudah punya
+        const nameTaken = mergedPacks.some((q) => q.name === p.name);
+        mergedPacks.push(nameTaken ? { ...p, name: `${p.name} (2)` } : p);
+        addedPacks++;
+      });
+      if (addedPacks > 0) {
+        setPackages(mergedPacks);
+        packagesRef.current = mergedPacks;
+      }
       try {
         localStorage.setItem("ln_sk_saved", JSON.stringify(next));
       } catch {}
       persistCollection(next, deviceId);
       setClaimMsg(
-        `✓ ${data.items.length} rumus diambil dari kode ${raw}` +
+        `✓ ${data.items.length} rumus${addedPacks ? ` + ${addedPacks} paket` : ""} diambil dari kode ${raw}` +
           (current.length ? ` + ${current.length} lokal digabung` : "")
       );
       setClaimCode("");
