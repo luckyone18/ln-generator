@@ -57,6 +57,7 @@ export default function Gen4D() {
   const [sep, setSep] = useState("*");
   const [twin, setTwin] = useState("all"); // all=sertakan, no=tanpa, only=hanya twin
   const [find, setFind] = useState(""); // cari angka di hasil 4D
+  const [buang, setBuang] = useState(""); // buang angka dari hasil, pemisah *
   const [copied, setCopied] = useState(false);
 
   const parsed = useMemo(() => raws.map(parse2D), [raws]);
@@ -72,7 +73,17 @@ export default function Gen4D() {
 
   // 🔎 saring hasil: hanya 4D yang mengandung angka yang dicari
   const q = find.replace(/\D/g, "");
-  const shown = useMemo(() => (q ? results.filter((r) => r.includes(q)) : results), [results, q]);
+  // 🗑 buang hasil: angka dipisah * (spasi/koma juga diterima) — 4D yang mengandung salah satunya dibuang
+  const buangList = useMemo(
+    () => [...new Set(buang.split(/[*\s,;|]+/).map((t) => t.replace(/\D/g, "")).filter(Boolean))],
+    [buang]
+  );
+  const isBuang = (r) => buangList.some((t) => r.includes(t));
+  const shown = useMemo(
+    () => (q ? results.filter((r) => r.includes(q) && !isBuang(r)) : results.filter((r) => !isBuang(r))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [results, q, buangList]
+  );
 
   // render hasil dengan highlight potongan yang cocok
   const renderToken = (r) => {
@@ -95,7 +106,11 @@ export default function Gen4D() {
     for (const r of results) seen.add(r.slice(1));
     return [...seen];
   }, [results]);
-  const shown3D = useMemo(() => (q ? results3D.filter((r) => r.includes(q)) : results3D), [results3D, q]);
+  const shown3D = useMemo(
+    () => (q ? results3D.filter((r) => r.includes(q) && !isBuang(r)) : results3D.filter((r) => !isBuang(r))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [results3D, q, buangList]
+  );
 
   const doCopy = async (list) => {
     const text = list.join(sep === "\n" ? "\n" : sep);
@@ -194,12 +209,31 @@ export default function Gen4D() {
           )}
         </div>
 
+        <div className={styles.findRow}>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={buang}
+            onChange={(e) => setBuang(e.target.value.replace(/[^\d* ]/g, ""))}
+            placeholder="🗑 hapus angka dari hasil… mis. 34*12*9 (pemisah *)"
+            className={styles.findInput}
+            disabled={!results.length}
+          />
+          {buang && (
+            <button type="button" className={styles.btnClear} onClick={() => setBuang("")}>
+              ✖
+            </button>
+          )}
+        </div>
+
         <section className={styles.outHead}>
           <span>
-            {q ? (
+            {q || buangList.length ? (
               <>
                 Ditemukan: <b>{shown.length}</b>×4D · <b>{shown3D.length}</b>×3D dari{" "}
-                {results.length} angka 4D untuk <b>{q}</b>
+                {results.length} angka 4D
+                {q ? <> untuk <b>{q}</b></> : null}
+                {buangList.length ? <> · dibuang <b>{results.length - shown.length}</b> (🗑 {buangList.join("*")})</> : null}
               </>
             ) : (
               <>
@@ -209,7 +243,7 @@ export default function Gen4D() {
             {totalBad ? ` · ${totalBad} token diabaikan` : ""}
           </span>
           <button type="button" className={styles.btnCopy} onClick={() => doCopy(shown)} disabled={!shown.length}>
-            {copied ? "✓ tersalin" : q ? "📋 COPY 4D CARI" : "📋 COPY 4D"}
+            {copied ? "✓ tersalin" : q || buangList.length ? "📋 COPY 4D CARI" : "📋 COPY 4D"}
           </button>
         </section>
 
@@ -226,7 +260,11 @@ export default function Gen4D() {
               ))
             )
           ) : results.length ? (
-            <span className={styles.idle}>Tidak ada 4D yang mengandung “{q}”…</span>
+            <span className={styles.idle}>
+              {q && !shown.length
+                ? `Tidak ada 4D yang mengandung “${q}”…`
+                : `Semua 4D terbuang oleh 🗑 ${buangList.join("*")}…`}
+            </span>
           ) : (
             <span className={styles.idle}>Isi minimal 1 kotak…</span>
           )}
@@ -262,7 +300,11 @@ export default function Gen4D() {
                   ))
                 )
               ) : (
-                <span className={styles.idle}>Tidak ada 3D yang mengandung “{q}”…</span>
+                <span className={styles.idle}>
+                  {q && !shown3D.length
+                    ? `Tidak ada 3D yang mengandung “${q}”…`
+                    : `Semua 3D terbuang oleh 🗑 ${buangList.join("*")}…`}
+                </span>
               )}
             </div>
           </>
