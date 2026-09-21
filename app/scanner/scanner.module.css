@@ -742,6 +742,28 @@
   text-align: center;
 }
 
+/* tombol urutkan di header koleksi */
+.thSort {
+  all: unset;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 6px;
+  padding: 2px 5px;
+  white-space: nowrap;
+}
+.thSort:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.thSort:active {
+  transform: translateY(1px);
+}
+
 .scannerTable td {
   padding: 0.55rem 0.4rem;
   border-bottom: 1px solid #f1f5f9;

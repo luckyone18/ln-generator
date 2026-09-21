@@ -35,6 +35,23 @@ function parseCode(code) {
   };
 }
 
+// Nilai numerik kolom PJG utk pengurutan: strek kena (+) / patah (−).
+// Fallback hitung dari trek_log kalau field streak belum ada (level modul — aman dipakai useMemo di atas).
+function pjgSortVal(item) {
+  let n = typeof item.streak === "number" ? item.streak : null;
+  let t = item.streakType || null;
+  if (n === null) {
+    try {
+      const s = buildStreaks([item])[0];
+      n = s.streak ?? 0;
+      t = s.streakType;
+    } catch {
+      n = 0;
+    }
+  }
+  return t === "miss" ? -Math.abs(n || 0) : Math.abs(n || 0);
+}
+
 function renderTrekHtml(raw) {
   let s = raw
     .replace(/&/g, "&amp;")
@@ -86,6 +103,8 @@ export default function ScannerPage() {
   const [dayFilter, setDayFilter] = useState(""); // "" = semua hari
   const [favOnly, setFavOnly] = useState(false); // tampilkan hanya favorit
   const [colSearch, setColSearch] = useState(""); // cari kode/rumus/pred
+  const [sortKey, setSortKey] = useState(""); // pengurutan kolom koleksi: rms|pool|hari|pred|pjg (""=bawaan)
+  const [sortDir, setSortDir] = useState(1); // 1=naik, -1=turun
 
   // Daftar pool unik dari koleksi (urut abjad)
   const pools = useMemo(
@@ -115,7 +134,7 @@ export default function ScannerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [savedItems]
   );
-  // Koleksi tampil = filter pool + hari aktif (+ opsi favorit saja + search)
+  // Koleksi tampil = filter pool + hari aktif (+ opsi favorit saja + search) lalu diurutkan (klik header)
   const visibleItems = useMemo(() => {
     let list = poolFilter
       ? savedItems.filter((s) => String(s.market || "?").toUpperCase() === poolFilter)
@@ -130,8 +149,44 @@ export default function ScannerPage() {
           String(s.rumus_key || "").toLowerCase().includes(q) ||
           String(s.ai || "").toLowerCase().includes(q)
       );
+    if (sortKey) {
+      const val = (s) =>
+        sortKey === "rms"
+          ? parseCode(s.code).type
+          : sortKey === "pool"
+          ? String(s.market || "?").toUpperCase()
+          : sortKey === "hari"
+          ? dayList.indexOf(normDay(s.days)) >= 0
+            ? dayList.indexOf(normDay(s.days))
+            : 99
+          : sortKey === "pred"
+          ? String(s.ai || "")
+          : pjgSortVal(s);
+      list = [...list].sort((a, b) => {
+        const va = val(a);
+        const vb = val(b);
+        const c =
+          typeof va === "number" ? va - vb : String(va).localeCompare(String(vb), "id", { numeric: true });
+        return c !== 0 ? c * sortDir : String(a.code).localeCompare(String(b.code));
+      });
+    }
     return list;
-  }, [savedItems, poolFilter, dayFilter, favOnly, colSearch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedItems, poolFilter, dayFilter, favOnly, colSearch, sortKey, sortDir]);
+
+  // Klik header koleksi: kolom sama = bolak arah, kolom baru = naik; klik ke-3 = lepas urut
+  const setSort = (key) => {
+    if (sortKey === key) {
+      if (sortDir === -1) {
+        setSortKey("");
+        setSortDir(1);
+      } else setSortDir(-1);
+    } else {
+      setSortKey(key);
+      setSortDir(1);
+    }
+  };
+  const sortMark = (key) => (sortKey === key ? (sortDir === 1 ? " ▲" : " ▼") : "");
 
   // Buang centang rumus yang tidak lagi terlihat setelah filter berubah
   const pruneChecked = (pool, day) => {
@@ -1606,11 +1661,31 @@ export default function ScannerPage() {
                 <th title="Sumber rumus (server asli / engine lokal / manual)">
                   <span className={styles.cellType}>SRC</span>
                 </th>
-                <th title="Tipe rumus (AI / AID / CB / dst)">RMS</th>
-                <th>POOL</th>
-                <th>HARI</th>
-                <th>PRED</th>
-                <th>PJG</th>
+                <th title="Tipe rumus (AI / AID / CB / dst) — klik untuk urutkan">
+                  <button type="button" className={styles.thSort} onClick={() => setSort("rms")}>
+                    RMS{sortMark("rms")}
+                  </button>
+                </th>
+                <th title="Pool / market — klik untuk urutkan">
+                  <button type="button" className={styles.thSort} onClick={() => setSort("pool")}>
+                    POOL{sortMark("pool")}
+                  </button>
+                </th>
+                <th title="Hari — klik untuk urutkan (Senin–Minggu)">
+                  <button type="button" className={styles.thSort} onClick={() => setSort("hari")}>
+                    HARI{sortMark("hari")}
+                  </button>
+                </th>
+                <th title="Prediksi — klik untuk urutkan">
+                  <button type="button" className={styles.thSort} onClick={() => setSort("pred")}>
+                    PRED{sortMark("pred")}
+                  </button>
+                </th>
+                <th title="Panjang/jarak strek — klik untuk urutkan (kena +, patah −)">
+                  <button type="button" className={styles.thSort} onClick={() => setSort("pjg")}>
+                    PJG{sortMark("pjg")}
+                  </button>
+                </th>
                 <th>STATUS</th>
                 <th>AKSI</th>
               </tr>
