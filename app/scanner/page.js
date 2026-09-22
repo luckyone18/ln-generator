@@ -100,6 +100,7 @@ export default function ScannerPage() {
   // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
   const [showTiers, setShowTiers] = useState("top"); // top | cad12 | all
   const [poolFilter, setPoolFilter] = useState(""); // "" = semua pool
+  const [rmsFilter, setRmsFilter] = useState(""); // "" = semua tipe RMS
   const [dayFilter, setDayFilter] = useState(""); // "" = semua hari
   const [favOnly, setFavOnly] = useState(false); // tampilkan hanya favorit
   const [colSearch, setColSearch] = useState(""); // cari kode/rumus/pred
@@ -110,6 +111,11 @@ export default function ScannerPage() {
   const pools = useMemo(
     () =>
       [...new Set(savedItems.map((s) => String(s.market || "?").toUpperCase()).filter(Boolean))].sort(),
+    [savedItems]
+  );
+  // Daftar tipe RMS unik dari koleksi (urut abjad) — sumber sama dgn kolom RMS tabel
+  const rmsTypes = useMemo(
+    () => [...new Set(savedItems.map((s) => parseCode(s.code).type).filter(Boolean))].sort(),
     [savedItems]
   );
   // Normalisasi nama hari (case-insensitive thd DAY_OPTIONS; tak dikenal → apa adanya)
@@ -134,11 +140,12 @@ export default function ScannerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [savedItems]
   );
-  // Koleksi tampil = filter pool + hari aktif (+ opsi favorit saja + search) lalu diurutkan (klik header)
+  // Koleksi tampil = filter pool + rms + hari aktif (+ opsi favorit saja + search) lalu diurutkan (klik header)
   const visibleItems = useMemo(() => {
     let list = poolFilter
       ? savedItems.filter((s) => String(s.market || "?").toUpperCase() === poolFilter)
       : savedItems;
+    if (rmsFilter) list = list.filter((s) => parseCode(s.code).type === rmsFilter);
     if (dayFilter) list = list.filter((s) => normDay(s.days) === dayFilter);
     if (favOnly) list = list.filter((s) => s.fav);
     const q = colSearch.trim().toLowerCase();
@@ -172,7 +179,7 @@ export default function ScannerPage() {
     }
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedItems, poolFilter, dayFilter, favOnly, colSearch, sortKey, sortDir]);
+  }, [savedItems, poolFilter, rmsFilter, dayFilter, favOnly, colSearch, sortKey, sortDir]);
 
   // Klik header koleksi: kolom sama = bolak arah, kolom baru = naik; klik ke-3 = lepas urut
   const setSort = (key) => {
@@ -189,7 +196,7 @@ export default function ScannerPage() {
   const sortMark = (key) => (sortKey === key ? (sortDir === 1 ? " ▲" : " ▼") : "");
 
   // Buang centang rumus yang tidak lagi terlihat setelah filter berubah
-  const pruneChecked = (pool, day) => {
+  const pruneChecked = (pool, rms, day) => {
     setCheckedCodes((prev) => {
       if (!prev.length) return prev;
       const stillVisible = new Set(
@@ -197,6 +204,7 @@ export default function ScannerPage() {
           .filter(
             (s) =>
               (!pool || String(s.market || "?").toUpperCase() === pool) &&
+              (!rms || parseCode(s.code).type === rms) &&
               (!day || normDay(s.days) === day)
           )
           .map((s) => s.code)
@@ -1438,14 +1446,14 @@ export default function ScannerPage() {
       <section className={styles.collectionPanel}>
         <div className={styles.collectionHead}>
           <h2 className={styles.tableTitle}>
-            📚 KOLEKSI RUMUS SAYA ({visibleItems.length}{poolFilter || dayFilter ? ` dari ${savedItems.length}` : ""})
+            📚 KOLEKSI RUMUS SAYA ({visibleItems.length}{poolFilter || rmsFilter || dayFilter ? ` dari ${savedItems.length}` : ""})
           </h2>
           <div className={styles.collectionToolbar}>
             <select
               value={poolFilter}
               onChange={(e) => {
                 setPoolFilter(e.target.value);
-                pruneChecked(e.target.value, dayFilter);
+                pruneChecked(e.target.value, rmsFilter, dayFilter);
               }}
               className={styles.tierSelect}
               title="Filter koleksi per pool/pasar"
@@ -1458,10 +1466,26 @@ export default function ScannerPage() {
               ))}
             </select>
             <select
+              value={rmsFilter}
+              onChange={(e) => {
+                setRmsFilter(e.target.value);
+                pruneChecked(poolFilter, e.target.value, dayFilter);
+              }}
+              className={styles.tierSelect}
+              title="Filter koleksi per tipe RMS"
+            >
+              <option value="">RMS: SEMUA</option>
+              {rmsTypes.map((t) => (
+                <option key={t} value={t}>
+                  RMS: {t}
+                </option>
+              ))}
+            </select>
+            <select
               value={dayFilter}
               onChange={(e) => {
                 setDayFilter(e.target.value);
-                pruneChecked(poolFilter, e.target.value);
+                pruneChecked(poolFilter, rmsFilter, e.target.value);
               }}
               className={styles.tierSelect}
               title="Filter koleksi per hari"
@@ -1701,6 +1725,7 @@ export default function ScannerPage() {
                 <tr>
                   <td colSpan={10} className={styles.emptyCell}>
                     Tidak ada rumus{poolFilter ? ` dari pool ${poolFilter}` : ""}
+                    {rmsFilter ? ` RMS ${rmsFilter}` : ""}
                     {dayFilter ? ` hari ${dayFilter}` : ""}
                     {colSearch.trim() ? ` cocok "${colSearch.trim()}"` : ""}.
                   </td>
@@ -1842,7 +1867,7 @@ export default function ScannerPage() {
             value={poolFilter}
             onChange={(e) => {
               setPoolFilter(e.target.value);
-              pruneChecked(e.target.value, dayFilter);
+              pruneChecked(e.target.value, rmsFilter, dayFilter);
             }}
             className={styles.tierSelect}
             title="Filter koleksi per pool/pasar"
@@ -1855,10 +1880,26 @@ export default function ScannerPage() {
             ))}
           </select>
           <select
+            value={rmsFilter}
+            onChange={(e) => {
+              setRmsFilter(e.target.value);
+              pruneChecked(poolFilter, e.target.value, dayFilter);
+            }}
+            className={styles.tierSelect}
+            title="Filter koleksi per tipe RMS"
+          >
+            <option value="">RMS: SEMUA</option>
+            {rmsTypes.map((t) => (
+              <option key={t} value={t}>
+                RMS: {t}
+              </option>
+            ))}
+          </select>
+          <select
             value={dayFilter}
             onChange={(e) => {
               setDayFilter(e.target.value);
-              pruneChecked(poolFilter, e.target.value);
+              pruneChecked(poolFilter, rmsFilter, e.target.value);
             }}
             className={styles.tierSelect}
             title="Filter koleksi per hari"
