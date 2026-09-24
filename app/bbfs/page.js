@@ -4,26 +4,45 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import styles from "./bbfs.module.css";
 import { bbfsGenerate } from "../bbfs-lib.js";
+import { generateTardal } from "../tardal.js";
 
 const SEPARATORS = ["*", "#", ","];
 
 export default function BbfsPage() {
+  const [mode, setMode] = useState("bbfs"); // "bbfs" | "tardal"
+
+  // --- BBFS state ---
   const [as, setAs] = useState("");
   const [kop, setKop] = useState("");
   const [kepala, setKepala] = useState("");
   const [ekor, setEkor] = useState("");
-  const [separator, setSeparator] = useState("*");
   const [noTwin, setNoTwin] = useState(false);
+
+  // --- TARDAL state ---
+  const [td, setTd] = useState("");
+  const [tdType, setTdType] = useState("2");
+  const [tdTwin, setTdTwin] = useState("1"); // 1 = Twin, 2 = No Twin
+
+  // --- shared ---
+  const [separator, setSeparator] = useState("*");
   const [copied, setCopied] = useState(false);
 
   const stripDigits = (v) => v.replace(/\D+/g, "").slice(0, 10);
 
-  const { results, count } = useMemo(
+  const { results, count: bbfsCount } = useMemo(
     () => bbfsGenerate({ as, kop, kepala, ekor, separator, noTwin }),
     [as, kop, kepala, ekor, separator, noTwin]
   );
+  const bbfsOutput = useMemo(() => results.join(separator), [results, separator]);
 
-  const output = useMemo(() => results.join(separator), [results, separator]);
+  const tdRes = useMemo(() => {
+    if (!td) return null;
+    return generateTardal({ digits: td, type: tdType, twin: Number(tdTwin), splitter: separator });
+  }, [td, tdType, tdTwin, separator]);
+
+  const isBbfs = mode === "bbfs";
+  const output = isBbfs ? bbfsOutput : tdRes?.result || "";
+  const count = isBbfs ? bbfsCount : tdRes?.count || 0;
 
   // Rincian panjang hasil, contoh: "4D: 4"
   const lengthBreakdown = useMemo(() => {
@@ -54,8 +73,11 @@ export default function BbfsPage() {
     setKop("");
     setKepala("");
     setEkor("");
-    setSeparator("*");
     setNoTwin(false);
+    setTd("");
+    setTdType("2");
+    setTdTwin("1");
+    setSeparator("*");
     setCopied(false);
   };
 
@@ -70,7 +92,7 @@ export default function BbfsPage() {
     <main className={styles.bbfsContainer}>
       <header className={styles.bbfsHeader}>
         <h1>🔁 BBFS GENERATOR</h1>
-        <p>Bolak Balik Full Set — kombinasi As × Kop × Kepala × Ekor, dihitung langsung di browser</p>
+        <p>Dua mode — BBFS (As × Kop × Kepala × Ekor) dan TARDAL — dihitung langsung di browser</p>
         <div className={styles.bbfsNavRow}>
           <Link href="/" className={styles.bbfsNavPill}>Home</Link>
           <Link href="/riwayat" className={styles.bbfsNavPill}>Riwayat</Link>
@@ -80,24 +102,85 @@ export default function BbfsPage() {
         </div>
       </header>
 
+      <div className={styles.bbfsTabRow}>
+        <button
+          type="button"
+          className={isBbfs ? styles.bbfsTabActive : styles.bbfsTab}
+          onClick={() => setMode("bbfs")}
+        >
+          🔁 BBFS
+        </button>
+        <button
+          type="button"
+          className={!isBbfs ? styles.bbfsTabActive : styles.bbfsTab}
+          onClick={() => setMode("tardal")}
+        >
+          🎲 TARDAL
+        </button>
+      </div>
+
       <section className={styles.bbfsInputPanel}>
-        <div className={styles.bbfsFieldGrid}>
-          {fields.map((f) => (
-            <label key={f.label} className={styles.bbfsFieldWrap}>
-              <span className={styles.bbfsFieldLabel}>{f.label}</span>
+        {isBbfs ? (
+          <div className={styles.bbfsFieldGrid}>
+            {fields.map((f) => (
+              <label key={f.label} className={styles.bbfsFieldWrap}>
+                <span className={styles.bbfsFieldLabel}>{f.label}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={f.value}
+                  placeholder={f.ph}
+                  onChange={(e) => f.set(stripDigits(e.target.value))}
+                  className={styles.bbfsFieldInput}
+                />
+              </label>
+            ))}
+          </div>
+        ) : (
+          <div className={styles.bbfsFieldGrid}>
+            <label className={styles.bbfsFieldWrap}>
+              <span className={styles.bbfsFieldLabel}>Tardal</span>
               <input
                 type="text"
                 inputMode="numeric"
-                maxLength={10}
-                value={f.value}
-                placeholder={f.ph}
-                onChange={(e) => f.set(stripDigits(e.target.value))}
+                maxLength={15}
+                value={td}
+                placeholder="1234"
+                onChange={(e) => setTd(e.target.value.replace(/\D+/g, "").slice(0, 15))}
                 className={styles.bbfsFieldInput}
               />
             </label>
-          ))}
-        </div>
+          </div>
+        )}
         <div className={styles.bbfsCtrlRow}>
+          {!isBbfs && (
+            <>
+              <label className={styles.bbfsSepLabel}>
+                Tipe:
+                <select
+                  value={tdType}
+                  onChange={(e) => setTdType(e.target.value)}
+                  className={styles.bbfsSepSelect}
+                >
+                  <option value="2">2D</option>
+                  <option value="3">3D</option>
+                  <option value="4">4D</option>
+                </select>
+              </label>
+              <label className={styles.bbfsSepLabel}>
+                Twin:
+                <select
+                  value={tdTwin}
+                  onChange={(e) => setTdTwin(e.target.value)}
+                  className={styles.bbfsSepSelect}
+                >
+                  <option value="1">Twin</option>
+                  <option value="2">No Twin</option>
+                </select>
+              </label>
+            </>
+          )}
           <label className={styles.bbfsSepLabel}>
             Pemisah:
             <select
@@ -110,33 +193,44 @@ export default function BbfsPage() {
               ))}
             </select>
           </label>
-          <label className={styles.bbfsTwinLabel} title="Sembunyikan hasil dengan digit berulang (twin)">
-            <input
-              type="checkbox"
-              checked={noTwin}
-              onChange={(e) => setNoTwin(e.target.checked)}
-              className={styles.bbfsTwinCheck}
-            />
-            TANPA TWIN
-          </label>
+          {isBbfs && (
+            <label className={styles.bbfsTwinLabel} title="Sembunyikan hasil dengan digit berulang (twin)">
+              <input
+                type="checkbox"
+                checked={noTwin}
+                onChange={(e) => setNoTwin(e.target.checked)}
+                className={styles.bbfsTwinCheck}
+              />
+              TANPA TWIN
+            </label>
+          )}
           <button type="button" className={styles.bbfsBtnReset} onClick={doReset}>
             🗑 RESET
           </button>
         </div>
         <div className={styles.bbfsStatRow}>
           <span className={styles.bbfsStatChip}>JUMLAH: <b>{count}</b></span>
-          {lengthBreakdown.map(([len, n]) => (
-            <span key={len} className={styles.bbfsStatChipSub}>
-              {len}D: <b>{n}</b>
+          {isBbfs &&
+            lengthBreakdown.map(([len, n]) => (
+              <span key={len} className={styles.bbfsStatChipSub}>
+                {len}D: <b>{n}</b>
+              </span>
+            ))}
+          {!isBbfs && count > 0 && (
+            <span className={styles.bbfsStatChipSub}>
+              {tdType}D: <b>{count}</b>
             </span>
-          ))}
+          )}
+          {!isBbfs && td && tdRes?.error && (
+            <span className={styles.bbfsStatChipSub}>⚠️ {tdRes.error}</span>
+          )}
         </div>
       </section>
 
       {count > 0 && (
         <section className={styles.bbfsResultPanel}>
           <div className={styles.bbfsResultHead}>
-            <h2>📦 HASIL BBFS</h2>
+            <h2>{isBbfs ? "📦 HASIL BBFS" : "📦 HASIL TARDAL"}</h2>
             <button type="button" className={styles.bbfsBtnCopyAll} onClick={doCopy}>
               {copied ? "✓ TERSALIN" : "📋 SALIN SEMUA"}
             </button>
