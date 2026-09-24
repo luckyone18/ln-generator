@@ -338,6 +338,9 @@ export default function Page() {
           >
             TARDAL
           </button>
+          <Link href="/bbfs" className="btn btnBlue">
+            BBFS
+          </Link>
           <Link href="/uji-kinerja" className="btn btnBlue">
             UJI KINERJA
           </Link>
