@@ -31,10 +31,18 @@ export function parseTrek(log) {
 }
 
 // Ambil digit angka main dari seq trek (buang semua tag/markup).
+// PENTING: seq bisa berisi label tipe yang nempel ("7890 ai3d", "946 aid").
+// Label ber-digit (ai3d, a3, j3, j4, ait) kalau ikut di-strip jadi "digit
+// hantu" → coverage per draw naik palsu. Jadi buang dulu SEMUA token yang
+// mengandung huruf/simbol, sisakan token angka utuh saja.
 function digitsOf(seq) {
+  const kept = String(seq)
+    .replace(/\[[^\]]*\]/g, " ") // tag [h]..[/h], [m]ai[/m] → spasi (pemisah token)
+    .split(/\s+/)
+    .filter((t) => t !== "" && !/[a-z𐄂?]/i.test(t)) // "ai3d"/"(X)"/"x"/"??" dibuang
+    .join("");
   return new Set(
-    String(seq)
-      .replace(/\[[^\]]*\]/g, "") // buang tag [h]..[/h], [m]ai[/m]
+    kept
       .replace(/[^0-9]/g, "")
       .split("")
       .filter((x) => x !== "")
