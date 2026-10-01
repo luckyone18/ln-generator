@@ -216,3 +216,34 @@
   color: #94a3b8;
   font-style: italic;
 }
+
+/* ==== Tab bar ==== */
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.4rem 0 1rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+.tabBtn {
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 9px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tabBtn:hover {
+  border-color: #10b981;
+  color: #059669;
+}
+.tabActive,
+.tabActive:hover {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+}

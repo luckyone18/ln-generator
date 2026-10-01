@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import styles from "./lucky.module.css";
+import Combiner from "./combiner";
 
 // parse deretan 2D: pemisah bebas (* spasi koma ; | newline) atau digit panjang -> potong per 2
 function parse2D(raw) {
@@ -53,6 +54,7 @@ function build4D(boxes) {
 }
 
 export default function Gen4D() {
+  const [tab, setTab] = useState("g4d"); // g4d | gabung
   const [raws, setRaws] = useState(["", "", ""]);
   const [sep, setSep] = useState("*");
   const [twin, setTwin] = useState("all"); // all=sertakan, no=tanpa, only=hanya twin
@@ -135,6 +137,28 @@ export default function Gen4D() {
     <main className={styles.page}>
       <div className={styles.card}>
         <h1 className={styles.title}>🎱 G4D</h1>
+
+        <div className={styles.tabs}>
+          <button
+            type="button"
+            className={`${styles.tabBtn} ${tab === "g4d" ? styles.tabActive : ""}`}
+            onClick={() => setTab("g4d")}
+          >
+            🎱 G4D
+          </button>
+          <button
+            type="button"
+            className={`${styles.tabBtn} ${tab === "gabung" ? styles.tabActive : ""}`}
+            onClick={() => setTab("gabung")}
+          >
+            🔗 Gabung Angka
+          </button>
+        </div>
+
+        {tab === "gabung" ? (
+          <Combiner />
+        ) : (
+        <>
         <p className={styles.sub}>
           Deretan 2D tiap kotak → gabungan 4D depan-belakang, susunan 2D tidak berubah
         </p>
@@ -308,6 +332,8 @@ export default function Gen4D() {
               )}
             </div>
           </>
+        )}
+        </>
         )}
       </div>
     </main>
