@@ -49,6 +49,22 @@ export function filterResult(list, q, buangList) {
   return arr;
 }
 
+// Cari angka yang muncul lebih dari sekali (double) di seluruh kolom.
+// Mengembalikan daftar unik sesuai urutan kemunculan pertama, plus jumlah tiap angka.
+export function findDoubles(cols) {
+  const count = new Map();
+  const order = [];
+  for (const col of cols) {
+    for (const n of col) {
+      if (!count.has(n)) order.push(n);
+      count.set(n, (count.get(n) || 0) + 1);
+    }
+  }
+  const doubles = order.filter((n) => count.get(n) > 1);
+  return { doubles, count };
+}
+
+
 // Ubah string input "buang" (pemisah *) menjadi daftar token unik.
 export function parseBuang(buang) {
   return [

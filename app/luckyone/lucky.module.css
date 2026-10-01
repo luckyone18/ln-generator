@@ -217,6 +217,19 @@
   font-style: italic;
 }
 
+/* ==== Kolom angka double ==== */
+.resultDouble {
+  border-color: #fbbf24;
+  background: #fffbeb;
+}
+.doubleCount {
+  color: #b45309;
+  font-size: 0.72rem;
+  font-weight: 800;
+  vertical-align: super;
+  margin-left: 1px;
+}
+
 /* ==== Tab bar ==== */
 .tabs {
   display: flex;

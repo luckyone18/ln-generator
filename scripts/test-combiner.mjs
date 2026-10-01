@@ -6,6 +6,7 @@ import {
   sortResult,
   filterResult,
   parseBuang,
+  findDoubles,
 } from "../app/luckyone/combiner-lib.js";
 
 let pass = 0;
@@ -70,6 +71,22 @@ eq(filterResult(["1234", "5678", "1290"], "", ["12"]), ["5678"], "buang yg menga
 const cols = [parseCol("12*34*12"), parseCol("34*567"), parseCol("1234*12*999")];
 const uniq = combineUnique(cols.map((c) => c.ok));
 eq(uniq, ["12", "34", "567", "1234", "999"], "e2e gabung unik (12 & 34 muncul 2x)");
+
+// 9) angka double (muncul > 1x)
+const d1 = findDoubles([["12", "34", "56"], ["34", "78"], ["12", "78", "99"]]);
+eq(d1.doubles, ["12", "34", "78"], "double: 12/34/78 muncul 2x");
+eq([...d1.count.entries()], [["12", 2], ["34", 2], ["56", 1], ["78", 2], ["99", 1]], "double: hitungan tiap angka");
+
+const d2 = findDoubles([["12", "12", "12"], ["12"]]);
+eq(d2.doubles, ["12"], "double: satu angka muncul 4x");
+eq(d2.count.get("12"), 4, "double: hitungan 4x");
+
+const d3 = findDoubles([["12", "34"], ["56", "78"]]);
+eq(d3.doubles, [], "double: tidak ada yang double");
+
+// 10) double mengikuti filter 🔎 & 🗑
+eq(filterResult(["12", "34", "78"], "3", []), ["34"], "double difilter cari '3'");
+eq(filterResult(["12", "34", "78"], "", ["78"]), ["12", "34"], "double difilter buang '78'");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

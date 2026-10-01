@@ -8,6 +8,7 @@ import {
   sortResult,
   filterResult,
   parseBuang,
+  findDoubles,
 } from "./combiner-lib.js";
 
 export default function Combiner() {
@@ -43,6 +44,19 @@ export default function Combiner() {
     return s;
   }, [shown]);
 
+  // ♻️ angka double: muncul lebih dari sekali di seluruh kolom input
+  const { doubles, count } = useMemo(
+    () => findDoubles(parsed.map((p) => p.ok)),
+    [parsed]
+  );
+  const doublesSorted = useMemo(() => sortResult(doubles, sortMode), [doubles, sortMode]);
+  // double juga difilter oleh 🔎 temukan & 🗑 buang agar konsisten
+  const doublesShown = useMemo(
+    () => filterResult(doublesSorted, q, buangList),
+    [doublesSorted, q, buangList]
+  );
+  const [copiedDouble, setCopiedDouble] = useState(false);
+
   const totalBad = parsed.reduce((n, p) => n + p.bad.length, 0);
 
   const renderToken = (r) => {
@@ -59,9 +73,8 @@ export default function Combiner() {
 
   const setBox = (i, v) => setRaws((prev) => prev.map((x, j) => (j === i ? v : x)));
 
-  const doCopy = async () => {
-    const text = shown.join(sep === "\n" ? "\n" : sep);
-    if (!text) return;
+  const copyText = async (text) => {
+    if (!text) return false;
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -74,8 +87,21 @@ export default function Combiner() {
       document.execCommand("copy");
       document.body.removeChild(ta);
     }
+    return true;
+  };
+
+  const doCopy = async () => {
+    const ok = await copyText(shown.join(sep === "\n" ? "\n" : sep));
+    if (!ok) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const doCopyDouble = async () => {
+    const ok = await copyText(doublesShown.join(sep === "\n" ? "\n" : sep));
+    if (!ok) return;
+    setCopiedDouble(true);
+    setTimeout(() => setCopiedDouble(false), 1500);
   };
 
   return (
@@ -230,6 +256,51 @@ export default function Combiner() {
           </span>
         ) : (
           <span className={styles.idle}>Isi minimal 1 kolom…</span>
+        )}
+      </div>
+
+      {/* ♻️ Kolom khusus angka double (muncul lebih dari sekali) */}
+      <section className={styles.outHead} style={{ marginTop: "1.2rem" }}>
+        <span>
+          ♻️ Angka Double: <b>{doublesShown.length}</b> angka
+          {doublesShown.length ? (
+            <em className={styles.hint3d}> (muncul lebih dari sekali di input)</em>
+          ) : null}
+        </span>
+        <button
+          type="button"
+          className={styles.btnCopy}
+          onClick={doCopyDouble}
+          disabled={!doublesShown.length}
+        >
+          {copiedDouble ? "✓ tersalin" : "📋 COPY DOUBLE"}
+        </button>
+      </section>
+
+      <div className={`${styles.resultBox} ${styles.resultDouble}`}>
+        {doublesShown.length ? (
+          sep === "\n" ? (
+            doublesShown.map((r) => (
+              <div key={r}>
+                {renderToken(r)}
+                <span className={styles.doubleCount}>×{count.get(r)}</span>
+              </div>
+            ))
+          ) : (
+            doublesShown.map((r, i) => (
+              <span key={r}>
+                {renderToken(r)}
+                <span className={styles.doubleCount}>×{count.get(r)}</span>
+                {i < doublesShown.length - 1 ? sep : ""}
+              </span>
+            ))
+          )
+        ) : (
+          <span className={styles.idle}>
+            {unique.length
+              ? "Tidak ada angka double (semua angka unik)…"
+              : "Isi minimal 1 kolom…"}
+          </span>
         )}
       </div>
     </div>
