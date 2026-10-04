@@ -245,7 +245,7 @@ export function buildMergedTrek(items) {
   return finalLogs.join("\n\n" + "=".repeat(35) + "\n\n");
 }
 
-// ── Rekap 4D (AID depan × AI belakang, dengan filter AI3D) ──────────
+// ── Rekap 4D (AID depan × AI belakang, dengan filter AI3D / AIT) ────
 // Semantik:
 //   AID (AI 2D depan)   → poin-mati posisi 1-2
 //   AI  (AI 2D belakang)→ poin-mati posisi 3-4
@@ -253,28 +253,43 @@ export function buildMergedTrek(items) {
 //                         dihitung jika 3 digit belakangnya == AI3D rumus.
 //                         (Result 1745 & AI3D "745" → sah; "746" → tidak masuk
 //                         TOP/CAD/MATI sama sekali.)
+//   AIT (ai 2d tengah)  → FILTER keras posisi 2-3 (C,K): sama seperti AI3D
+//                         tapi mengunci 2 digit tengah. (Result 1745 & AIT
+//                         "74" → sah; "75" → dibuang.)
 // Poin 4D sah = poinFront(ab) + poinBack(cd); tier 0=[TOP].
-// Syarat UI: minimal 1 AID DAN 1 AI tercentang (AI3D opsional).
+// Syarat UI: minimal 1 AID DAN 1 AI tercentang (AI3D/AIT opsional).
 const FRONT_TYPES = new Set(["AID", "AD", "AI 2D DEPAN"]);
 const BACK_TYPES = new Set(["AI", "AI 2D BELAKANG"]);
 const AI3D_TYPES = new Set(["AI3D", "AI 3D", "A3"]);
+const AIT_TYPES = new Set(["AIT", "AT", "AI 2D TENGAH"]);
 
 function aiDigits(f) {
   return String(f.ai || "").replace(/\D/g, "");
 }
 
-// Kumpulkan kunci AI3D (3 digit belakang = posisi 2-4). AI >3 digit: ambil 3
-// digit terakhir; <3 digit: tak bisa jadi filter → dicatat sebagai diabaikan.
-export function ai3dKeys(formulas) {
+// Kumpulkan kunci filter N-digit. Slice digit AI sesuai orientasi:
+//   tail (AI3D) → N digit terakhir · head (AIT) → N digit pertama.
+// Panjang AI tidak pas → dicatat sebagai diabaikan.
+function filterKeys(formulas, len, label, orient) {
   const keys = new Set();
   const ignored = [];
   for (const f of formulas) {
     const d = aiDigits(f);
-    if (d.length === 3) keys.add(d);
-    else if (d.length > 3) keys.add(d.slice(-3));
-    else ignored.push(`${f.type || "AI3D"}:${f.ai || "-"}`);
+    if (d.length === len) keys.add(d);
+    else if (d.length > len) keys.add(orient === "head" ? d.slice(0, len) : d.slice(-len));
+    else ignored.push(`${f.type || label}:${f.ai || "-"}`);
   }
   return { keys: [...keys].sort(), ignored };
+}
+
+// Kunci AI3D (3 digit belakang = posisi 2-4).
+export function ai3dKeys(formulas) {
+  return filterKeys(formulas, 3, "AI3D", "tail");
+}
+
+// Kunci AIT (2 digit tengah = posisi 2-3).
+export function aitKeys(formulas) {
+  return filterKeys(formulas, 2, "AIT", "head");
 }
 
 export function buildRekap4D(items) {
@@ -282,8 +297,12 @@ export function buildRekap4D(items) {
   const front = items.filter((x) => FRONT_TYPES.has(norm(x.type)));
   const back = items.filter((x) => BACK_TYPES.has(norm(x.type)));
   const ai3d = items.filter((x) => AI3D_TYPES.has(norm(x.type)));
+  const ait = items.filter((x) => AIT_TYPES.has(norm(x.type)));
   const { keys: ai3dFilter, ignored: ai3dIgnored } = ai3dKeys(ai3d);
-  const useFilter = ai3dFilter.length > 0;
+  const { keys: aitFilter, ignored: aitIgnored } = aitKeys(ait);
+  const useFilter = ai3dFilter.length > 0 || aitFilter.length > 0;
+  const hasAi3d = ai3dFilter.length > 0;
+  const hasAit = aitFilter.length > 0;
 
   const ptsFront = scorePool(front);
   const ptsBack = scorePool(back);
@@ -292,9 +311,10 @@ export function buildRekap4D(items) {
   const kresFront = kresOf(front);
   const kresBack = kresOf(back);
   const kres3d = kresOf(ai3d);
+  const kresTt = kresOf(ait);
 
   // konvolusi 4D: poinTotal = poinFront + poinBack.
-  // Saat filter AI3D aktif: hanya kombinasi ab+cd yang bcd ∈ kunci yang dihitung.
+  // Saat filter aktif: hanya kombinasi ab+cd yang lolos SEMUA kunci yang dihitung.
   const maxP = front.length + back.length;
   const tiers4D = [];   // tiers4D[poin] = ["abcd", ...] (hanya yang sah)
   const counts4D = [];  // counts4D[poin] = jumlah
@@ -309,9 +329,9 @@ export function buildRekap4D(items) {
       for (const d2 of fs) {
         for (const d2b of bs) {
           const code = d2 + d2b;
-          if (useFilter && !ai3dFilter.includes(code.slice(1, 4))) {
-            dropped++;
-            continue;
+          if (useFilter) {
+            if (hasAi3d && !ai3dFilter.includes(code.slice(1, 4))) { dropped++; continue; }
+            if (hasAit && !aitFilter.includes(code.slice(1, 3))) { dropped++; continue; }
           }
           list.push(code);
         }
@@ -323,10 +343,10 @@ export function buildRekap4D(items) {
   }
 
   return {
-    front, back, ai3d,
-    ai3dFilter, ai3dIgnored, useFilter, kept, dropped,
+    front, back, ai3d, ait,
+    ai3dFilter, ai3dIgnored, aitFilter, aitIgnored, useFilter, kept, dropped,
     ptsFront, ptsBack, tiersFront, tiersBack,
-    kresFront, kresBack, kres3d,
+    kresFront, kresBack, kres3d, kresTt,
     tiers4D, counts4D,
   };
 }
@@ -379,8 +399,11 @@ export function buildStats4D(impl) {
 
 export function renderRekap4D(impl, showTiers = "top") {
   const L = [];
+  const filt = []
+    .concat(impl.ai3d.length ? [`${impl.ai3d.length} AI3D`] : [])
+    .concat(impl.ait.length ? [`${impl.ait.length} AIT`] : []);
   const header = impl.useFilter
-    ? `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI + ${impl.ai3d.length} AI3D (filter)`
+    ? `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI + ${filt.join(" + ")} (filter)`
     : `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI`;
   L.push(header, "");
 
@@ -398,6 +421,16 @@ export function renderRekap4D(impl, showTiers = "top") {
     if (impl.ai3dIgnored.length) {
       L.push(`diabaikan (bukan 3 digit): ${impl.ai3dIgnored.join(", ")}`);
     }
+  }
+  if (impl.ait.length) {
+    L.push("── AIT (filter posisi 2-3 / C K) ──");
+    impl.ait.forEach((f) => L.push(`${f.type} : ${f.ai}`));
+    L.push(`KUNCI: ${impl.aitFilter.join("*") || "-"}`);
+    if (impl.aitIgnored.length) {
+      L.push(`diabaikan (bukan 2 digit): ${impl.aitIgnored.join(", ")}`);
+    }
+  }
+  if (impl.useFilter) {
     L.push(
       `Filter membuang ${impl.dropped} kombinasi; ${impl.kept} 4D ikut dihitung.`
     );
@@ -415,8 +448,9 @@ export function renderRekap4D(impl, showTiers = "top") {
   };
   kresBlock("DEPAN", impl.kresFront);
   kresBlock("BELAKANG", impl.kresBack);
-  if (impl.useFilter) kresBlock("AI3D", impl.kres3d);
-  if (impl.kresFront.kresLevels.length || impl.kresBack.kresLevels.length || impl.kres3d.kresLevels.length) L.push("");
+  if (impl.ai3d.length) kresBlock("AI3D", impl.kres3d);
+  if (impl.ait.length) kresBlock("AIT", impl.kresTt);
+  if (impl.kresFront.kresLevels.length || impl.kresBack.kresLevels.length || impl.kres3d.kresLevels.length || impl.kresTt.kresLevels.length) L.push("");
 
   // blok tier 2D depan & belakang (ringkas)
   const tierBlock = (name, tiers, n) => {
@@ -434,7 +468,7 @@ export function renderRekap4D(impl, showTiers = "top") {
   tierBlock("BELAKANG", impl.tiersBack, impl.back.length);
 
   // blok 4D gabungan (hanya angka sah)
-  L.push(impl.useFilter ? "── 4D GABUNGAN (lolos filter AI3D) ──" : "── 4D GABUNGAN ──");
+  L.push(impl.useFilter ? "── 4D GABUNGAN (lolos filter) ──" : "── 4D GABUNGAN ──");
   const maxP = impl.front.length + impl.back.length;
   const showMax = maxShowTiers(showTiers);
   for (let p = 0; p <= maxP; p++) {
@@ -452,7 +486,7 @@ export function renderRekap4D(impl, showTiers = "top") {
   L.push("── STATISTIK POOL 4D ──");
   L.push(
     impl.useFilter
-      ? `Total sah (lolos AI3D) : ${stats.TOTAL} (dari 10.000; terbuang ${impl.dropped})`
+      ? `Total sah (lolos filter) : ${stats.TOTAL} (dari 10.000; terbuang ${impl.dropped})`
       : `Total kombinasi : ${stats.TOTAL}`
   );
   stats.tiers.forEach((t) => {

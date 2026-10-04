@@ -66,8 +66,8 @@ const F = (type, ai) => ({ type, ai });
   ok(txt.includes("AI3D (filter posisi 2-4"), "render: blok AI3D ada");
   ok(txt.includes("KUNCI: 145"), "render: kunci tampil");
   ok(txt.includes("Filter membuang"), "render: ringkasan buang/kept");
-  ok(txt.includes("4D GABUNGAN (lolos filter AI3D)"), "render: judul gabungan berlabel filter");
-  ok(txt.includes("Total sah (lolos AI3D) : 10"), "render: statistik berbasis total sah");
+  ok(txt.includes("4D GABUNGAN (lolos filter)"), "render: judul gabungan berlabel filter");
+  ok(txt.includes("Total sah (lolos filter) : 10"), "render: statistik berbasis total sah");
   // semua angka 4D pada blok gabungan harus lolos filter
   const blok = txt.slice(txt.indexOf("4D GABUNGAN"), txt.indexOf("STATISTIK"));
   const codes = [...blok.matchAll(/\b(\d{4})\b/g)].map((m) => m[1]);
@@ -80,6 +80,65 @@ const F = (type, ai) => ({ type, ai });
   const txt = renderRekap4D(impl, "top");
   ok(!txt.includes("KUNCI:"), "tanpa AI3D: tak ada blok KUNCI");
   ok(txt.includes("Total kombinasi : 10000"), "tanpa AI3D: basis tetap 10.000");
+}
+
+// ── 7. AIT memfilter posisi 2-3 (tengah) ─────────────────────────────
+console.log("\n[7] AIT filter posisi 2-3");
+{
+  // Kunci b+c = "74": ab berakhiran 7 (10) × cd berawalan 4 (10) = 100 sah.
+  const r = buildRekap4D([
+    { type: "AID", ai: "17" }, { type: "AI", ai: "45" },
+    { type: "AIT", ai: "74" },
+  ]);
+  ok(r.useFilter, "useFilter aktif");
+  ok(r.kept === 100 && r.dropped === 9900, `kept=100 dropped=9900 (got ${r.kept}/${r.dropped})`);
+  const all = Object.values(r.tiers4D).flat();
+  ok(all.length === 100, "100 kode sah");
+  ok(all.every((c) => c.slice(1, 3) === "74"), "semua kode tengah=74");
+  // 1745: depan 17 hidup (AI "17"), belakang 45 hidup (AI "45"), tengah 74 ✓ → TOP
+  ok((r.tiers4D[0] || []).includes("1745"), "1745 masuk TOP");
+}
+
+// ── 8. AI3D + AIT bersamaan: tengah harus konsisten ─────────────────
+console.log("\n[8] AI3D + AIT sekaligus");
+{
+  // AI3D 745 (b=7,c=4,d=5) ⊂ AIT 74 (b=7,c=4) → konsisten: 10 kode (a×745).
+  const r = buildRekap4D([
+    { type: "AID", ai: "17" }, { type: "AI", ai: "45" },
+    { type: "AI3D", ai: "745" }, { type: "AIT", ai: "74" },
+  ]);
+  ok(r.kept === 10, `konsisten → kept=10 (got ${r.kept})`);
+  // AI3D 745 vs AIT 75 → kontradiksi di posisi 3 (4 vs 5) → 0 sah.
+  const r2 = buildRekap4D([
+    { type: "AID", ai: "17" }, { type: "AI", ai: "45" },
+    { type: "AI3D", ai: "745" }, { type: "AIT", ai: "75" },
+  ]);
+  ok(r2.kept === 0 && r2.dropped === 10000, `kontradiktif → 0 sah (got ${r2.kept})`);
+}
+
+// ── 9. AIT multi-kunci = union ───────────────────────────────────────
+console.log("\n[9] AIT union multi-rumus");
+{
+  // kunci 14 & 74: ab akhir 1 atau 7 (20) × cd awal 4 (10) = 200.
+  const r = buildRekap4D([
+    { type: "AID", ai: "17" }, { type: "AI", ai: "45" },
+    { type: "AIT", ai: "74" }, { type: "AIT", ai: "14" },
+  ]);
+  ok(r.aitFilter.join("*") === "14*74", `kunci 14*74 (got ${r.aitFilter})`);
+  ok(r.kept === 200, `kept=200 (got ${r.kept})`);
+  const all = Object.values(r.tiers4D).flat();
+  ok(all.every((c) => ["14", "74"].includes(c.slice(1, 3))), "semua sah punya tengah di kunci");
+}
+
+// ── 10. AIT AI bukan 2 digit → diabaikan / dipotong ──────────────────
+console.log("\n[10] AIT anomali");
+{
+  const r = buildRekap4D([
+    { type: "AID", ai: "17" }, { type: "AI", ai: "45" },
+    { type: "AIT", ai: "7" }, { type: "AIT", ai: "745" },
+  ]);
+  ok(r.aitIgnored.includes("AIT:7"), "AIT:7 diabaikan (<2 digit)");
+  ok(r.aitFilter.includes("74"), "AIT:745 → ambil 2 digit depan '74'");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

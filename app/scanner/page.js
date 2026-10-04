@@ -813,7 +813,7 @@ export default function ScannerPage() {
   // ── Rekap 4D (AID depan + AI belakang) ─────────────────────────────
   const doRekap4D = () => {
     if (!checkedCodes.length) {
-      alert("Pilih minimal 1 rumus AI dan 1 rumus AID di Koleksi untuk Rekap 4D (AI3D opsional sebagai filter).");
+      alert("Pilih minimal 1 rumus AI dan 1 rumus AID di Koleksi untuk Rekap 4D (AI3D/AIT opsional sebagai filter).");
       return;
     }
     const items = checkedCodes
@@ -826,7 +826,7 @@ export default function ScannerPage() {
     const hasBack = items.some((x) => ["AI", "AI 2D BELAKANG"].includes(typ(x.type)));
     if (!hasFront || !hasBack) {
       alert(
-        "Rekap 4D butuh minimal 1 rumus AID (2D depan) dan 1 rumus AI (2D belakang) yang dicentang. AI3D boleh ikut — memfilter digit posisi 2-4."
+        "Rekap 4D butuh minimal 1 rumus AID (2D depan) dan 1 rumus AI (2D belakang) yang dicentang. AI3D/AIT boleh ikut — AI3D memfilter posisi 2-4, AIT memfilter posisi 2-3 (tengah)."
       );
       return;
     }
@@ -1522,7 +1522,7 @@ export default function ScannerPage() {
               className={styles.btnRekap4D}
               onClick={doRekap4D}
               disabled={checkedCodes.length === 0}
-              title="Rekap 4D — AID (depan) × AI (belakang) → 4D TOP/CAD/MATI; AI3D tercentang = filter posisi 2-4"
+              title="Rekap 4D — AID (depan) × AI (belakang) → 4D TOP/CAD/MATI; AI3D tercentang = filter posisi 2-4, AIT = filter posisi 2-3 (tengah)"
             >
               🎯 REKAP 4D
             </button>
