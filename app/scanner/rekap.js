@@ -328,33 +328,45 @@ export function buildRekap4D(items, filterMode = "top") {
   const kres3d = kresOf(ai3d);
   const kresTt = kresOf(ait);
 
-  // konvolusi 4D: poinTotal = poinFront + poinBack.
-  // Saat filter aktif: hanya kombinasi ab+cd yang lolos SEMUA kunci yang dihitung.
-  const maxP = front.length + back.length;
-  const tiers4D = [];   // tiers4D[poin] = ["abcd", ...] (hanya yang sah)
-  const counts4D = [];  // counts4D[poin] = jumlah
-  let kept = 0;         // total 4D lolos filter
-  let dropped = 0;      // total 4D terbuang oleh filter
-  for (let p = 0; p <= maxP; p++) {
-    const list = [];
-    for (let f = 0; f <= p; f++) {
-      const b = p - f;
-      const fs = tiersFront[f] || [];
-      const bs = tiersBack[b] || [];
-      for (const d2 of fs) {
-        for (const d2b of bs) {
-          const code = d2 + d2b;
-          if (useFilter) {
-            if (hasAi3d && !ai3dFilter.includes(code.slice(1, 4))) { dropped++; continue; }
-            if (hasAit && !aitFilter.includes(code.slice(1, 3))) { dropped++; continue; }
-          }
-          list.push(code);
+  // Mode GABUNG TIER SAMA (bukan jumlah poin):
+  //   TOP 4D  = TOP dpn   × TOP blk
+  //   CAD1 4D = CAD1 dpn  × CAD1 blk
+  //   CAD2 4D = CAD2 dpn  × CAD2 blk
+  //   MATI n  = MATI n dpn × MATI n blk
+  // Tidak ada perhitungan silang antar-tier.
+  const tiers4D = [];
+  const counts4D = [];
+  let kept = 0;
+  let dropped = 0;
+
+  // Konvolusi 2 daftar tier yang SAMA + filter AI3D (pos 2-4) / AIT (pos 2-3).
+  const convolveTier = (dpnList, blkList) => {
+    const out = [];
+    for (const a of dpnList) {
+      for (const b of blkList) {
+        const c = a + b;
+        if (useFilter) {
+          if (hasAi3d && !ai3dFilter.includes(c.slice(1, 4))) { dropped++; continue; }
+          if (hasAit && !aitFilter.includes(c.slice(1, 3))) { dropped++; continue; }
         }
+        out.push(c);
       }
     }
-    kept += list.length;
-    counts4D[p] = list.length;
-    if (list.length) tiers4D[p] = list;
+    return out;
+  };
+
+  const maxTier = Math.max(
+    tiersFront.length ? tiersFront.length - 1 : 0,
+    tiersBack.length ? tiersBack.length - 1 : 0
+  );
+  for (let p = 0; p <= maxTier; p++) {
+    const fs = tiersFront[p] || [];
+    const bs = tiersBack[p] || [];
+    if (!fs.length || !bs.length) continue;
+    const combo = convolveTier(fs, bs);
+    tiers4D[p] = combo;
+    counts4D[p] = combo.length;
+    kept += combo.length;
   }
 
   return {
@@ -379,12 +391,17 @@ function bar(pct, width = 10) {
   return "█".repeat(Math.max(0, fill)) + "░".repeat(Math.max(0, width - fill));
 }
 
-// Statistik pool 4D atas angka yang SAH (lolos filter AI3D bila aktif):
+// Statistik pool 4D atas angka yang dihasilkan (gabung tier sama):
 // distribusi tier, akumulasi coverage, digit hidup per posisi di tier TOP.
 export function buildStats4D(impl) {
-  const TOTAL = impl.useFilter ? impl.kept : 10000;
+  // Basis = total 4D yang benar-benar dihasilkan (kept), bukan 10.000,
+  // karena mode "gabung tier sama" tidak mengisi seluruh ruang 4D.
+  const TOTAL = impl.kept;
   const tiers = [];
-  const maxP = impl.front.length + impl.back.length;
+  const maxP = Math.max(
+    impl.tiersFront.length ? impl.tiersFront.length - 1 : 0,
+    impl.tiersBack.length ? impl.tiersBack.length - 1 : 0
+  );
   let cum = 0;
   for (let p = 0; p <= maxP; p++) {
     const n = impl.counts4D[p] || 0;
@@ -504,7 +521,10 @@ export function renderRekap4D(impl, showTiers = "top") {
     (impl.useFilter ? "── 4D GABUNGAN (lolos filter) ──" : "── 4D GABUNGAN ──") +
     (showTiers === "top" ? "" : showTiers === "all" ? " [TOP+CAD1+CAD2+MATI tampil]" : " [TOP+CAD1+CAD2 tampil]")
   );
-  const maxP = impl.front.length + impl.back.length;
+  const maxP = Math.max(
+    impl.tiersFront.length ? impl.tiersFront.length - 1 : 0,
+    impl.tiersBack.length ? impl.tiersBack.length - 1 : 0
+  );
   const showMax = maxShowTiers(showTiers);
   for (let p = 0; p <= maxP; p++) {
     const n = impl.counts4D[p] || 0;
@@ -521,8 +541,8 @@ export function renderRekap4D(impl, showTiers = "top") {
   L.push("── STATISTIK POOL 4D ──");
   L.push(
     impl.useFilter
-      ? `Total sah (lolos filter) : ${stats.TOTAL} (dari 10.000; terbuang ${impl.dropped})`
-      : `Total kombinasi : ${stats.TOTAL}`
+      ? `Total sah (lolos filter) : ${stats.TOTAL} (${impl.dropped} terbuang)`
+      : `Total kombinasi        : ${stats.TOTAL}`
   );
   stats.tiers.forEach((t) => {
     L.push(
