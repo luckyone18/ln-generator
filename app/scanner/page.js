@@ -100,6 +100,7 @@ export default function ScannerPage() {
   // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
   const [showTiers, setShowTiers] = useState("cad12"); // top | cad12 | all
   const [filterMode, setFilterMode] = useState("top"); // "top" | "full" for AI3D/AIT filter
+  const [outputMode, setOutputMode] = useState("bagi"); // "bagi" (per-tier) | "digabung" (1 kelompok)
   const [poolFilter, setPoolFilter] = useState(""); // "" = semua pool
   const [rmsFilter, setRmsFilter] = useState(""); // "" = semua tipe RMS
   const [dayFilter, setDayFilter] = useState(""); // "" = semua hari
@@ -831,7 +832,7 @@ export default function ScannerPage() {
       );
       return;
     }
-    const impl = buildRekap4D(items, filterMode);
+    const impl = buildRekap4D(items, filterMode, outputMode);
     setTrekLog(renderRekap4D(impl, showTiers));
   };
 
@@ -1541,7 +1542,7 @@ export default function ScannerPage() {
                   checked.some((x) => ["AID", "AD", "AI 2D DEPAN"].includes(typ(x.type))) &&
                   checked.some((x) => ["AI", "AI 2D BELAKANG"].includes(typ(x.type)))
                 ) {
-                  setTrekLog(renderRekap4D(buildRekap4D(checked), v));
+                  setTrekLog(renderRekap4D(buildRekap4D(checked, filterMode, outputMode), v));
                 }
               }}
               className={styles.tierSelect}
@@ -1576,6 +1577,31 @@ export default function ScannerPage() {
             >
               <option value="top">Filter: TOP saja</option>
               <option value="full">Filter: FULL (TOP+CAD 1+CAD 2)</option>
+            </select>
+            <select
+              value={outputMode}
+              onChange={(e) => {
+                const v = e.target.value;
+                setOutputMode(v);
+                if (trekLog.includes("4D GABUNGAN")) {
+                  const items = checkedCodes
+                    .map((c) =>
+                      savedItems.find((x) => x.code === c) || foundItems.find((x) => x.code === c)
+                    )
+                    .filter(Boolean);
+                  const typ = (t) => String(t || "").toUpperCase();
+                  const hasFront = items.some((x) => ["AID", "AD", "AI 2D DEPAN"].includes(typ(x.type)));
+                  const hasBack = items.some((x) => ["AI", "AI 2D BELAKANG"].includes(typ(x.type)));
+                  if (hasFront && hasBack) {
+                    setTrekLog(renderRekap4D(buildRekap4D(items, filterMode, v), showTiers));
+                  }
+                }
+              }}
+              className={styles.tierSelect}
+              title="Mode output 4D: 'BAGI' = per-tier (TOP/CAD1/CAD2 terpisah) | 'DIGABUNG' = 1 kelompok (TOP∪CAD1∪CAD2)"
+            >
+              <option value="bagi">Output: BAGI (per tier)</option>
+              <option value="digabung">Output: DIGABUNG (1 kelompok)</option>
             </select>
             <button
               type="button"

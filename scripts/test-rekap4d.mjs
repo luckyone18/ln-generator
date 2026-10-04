@@ -79,5 +79,33 @@ const F = (type, ai) => ({ type, ai });
   ok(impl.kept < impl.kept + impl.dropped, "filter: kept < kept+dropped");
 }
 
+// ── 8. Mode output "digabung": 1 kelompok = (TOP∪CAD1∪CAD2) × (TOP∪CAD1∪CAD2) ──
+{
+  const items = [F("AID", "17"), F("AID", "25"), F("AID", "38"), F("AI", "45"), F("AI", "89"), F("AI", "12")];
+  const bagi = buildRekap4D(items, "top", "bagi");
+  const gab = buildRekap4D(items, "top", "digabung");
+  const allF = (bagi.tiersFront[0] || []).length + (bagi.tiersFront[1] || []).length + (bagi.tiersFront[2] || []).length;
+  const allB = (bagi.tiersBack[0] || []).length + (bagi.tiersBack[1] || []).length + (bagi.tiersBack[2] || []).length;
+  eq(gab.outputMode, "digabung", "digabung: outputMode tersimpan");
+  eq(gab.counts4D.length, 1, "digabung: hanya 1 kelompok");
+  eq(gab.counts4D[0], allF * allB, "digabung: n = (TOP∪CAD1∪CAD2 dpn) × (… blk)");
+  ok(gab.kept === gab.counts4D[0], "digabung: kept = 1 kelompok");
+  ok(gab.kept !== bagi.kept, "digabung vs bagi: jumlah berbeda");
+}
+
+// ── 9. Mode output "digabung" + filter AI3D (pos 2-4) ──
+{
+  const items = [F("AID", "17"), F("AID", "25"), F("AI", "45"), F("AI", "89"), F("AI3D", "745")];
+  const gab = buildRekap4D(items, "top", "digabung");
+  eq(gab.outputMode, "digabung", "digabung+filter: outputMode");
+  ok(gab.useFilter, "digabung+filter: filter aktif");
+  ok(gab.dropped > 0, "digabung+filter: ada yang dibuang");
+  // semua 4D sah harus punya posisi 2-4 == kunci
+  ok(
+    (gab.tiers4D[0] || []).every((c) => gab.ai3dFilter.includes(c.slice(1, 4))),
+    "digabung+filter: semua 4D lolos kunci AI3D"
+  );
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

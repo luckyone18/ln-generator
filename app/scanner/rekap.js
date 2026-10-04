@@ -299,7 +299,7 @@ function pickKeys(tier, mode) {
   return [...new Set(out)].sort();
 }
 
-export function buildRekap4D(items, filterMode = "top") {
+export function buildRekap4D(items, filterMode = "top", outputMode = "bagi") {
   const norm = (t) => String(t || "").toUpperCase();
   const front = items.filter((x) => FRONT_TYPES.has(norm(x.type)));
   const back = items.filter((x) => BACK_TYPES.has(norm(x.type)));
@@ -355,23 +355,35 @@ export function buildRekap4D(items, filterMode = "top") {
     return out;
   };
 
-  const maxTier = Math.max(
-    tiersFront.length ? tiersFront.length - 1 : 0,
-    tiersBack.length ? tiersBack.length - 1 : 0
-  );
-  for (let p = 0; p <= maxTier; p++) {
-    const fs = tiersFront[p] || [];
-    const bs = tiersBack[p] || [];
-    if (!fs.length || !bs.length) continue;
-    const combo = convolveTier(fs, bs);
-    tiers4D[p] = combo;
-    counts4D[p] = combo.length;
-    kept += combo.length;
+  // Jika outputMode === "digabung": gabungkan semua angka dari TOP+CAD1+CAD2 menjadi 1 grup saja
+  // dengan cara: (TOP∪CAD1∪CAD2) dpn × (TOP∪CAD1∪CAD2) blk, lalu filter AI3D/AIT.
+  if (outputMode === "digabung") {
+    const allFront = [...(tiersFront[0] || []), ...(tiersFront[1] || []), ...(tiersFront[2] || [])];
+    const allBack = [...(tiersBack[0] || []), ...(tiersBack[1] || []), ...(tiersBack[2] || [])];
+    const combined = convolveTier(allFront, allBack);
+    tiers4D[0] = combined;
+    counts4D[0] = combined.length;
+    kept = combined.length;
+  } else {
+    // Mode "bagi" (sekarang): split per tier (diagonal)
+    const maxTier = Math.max(
+      tiersFront.length ? tiersFront.length - 1 : 0,
+      tiersBack.length ? tiersBack.length - 1 : 0
+    );
+    for (let p = 0; p <= maxTier; p++) {
+      const fs = tiersFront[p] || [];
+      const bs = tiersBack[p] || [];
+      if (!fs.length || !bs.length) continue;
+      const combo = convolveTier(fs, bs);
+      tiers4D[p] = combo;
+      counts4D[p] = combo.length;
+      kept += combo.length;
+    }
   }
 
   return {
     front, back, ai3d, ait,
-    ai3dFilter, aitFilter, filterMode, useFilter, kept, dropped,
+    ai3dFilter, aitFilter, filterMode, outputMode, useFilter, kept, dropped,
     ptsFront, ptsBack, tiersFront, tiersBack,
     kresFront, kresBack, kres3d, kresTt,
     tierAi3d, tierAit,
@@ -398,16 +410,21 @@ export function buildStats4D(impl) {
   // karena mode "gabung tier sama" tidak mengisi seluruh ruang 4D.
   const TOTAL = impl.kept;
   const tiers = [];
-  const maxP = Math.max(
-    impl.tiersFront.length ? impl.tiersFront.length - 1 : 0,
-    impl.tiersBack.length ? impl.tiersBack.length - 1 : 0
-  );
+  const isGabung = impl.outputMode === "digabung";
+  const maxP = isGabung
+    ? 0
+    : Math.max(
+        impl.tiersFront.length ? impl.tiersFront.length - 1 : 0,
+        impl.tiersBack.length ? impl.tiersBack.length - 1 : 0
+      );
   let cum = 0;
   for (let p = 0; p <= maxP; p++) {
     const n = impl.counts4D[p] || 0;
     if (!n) continue;
     cum += n;
-    const label = p === 0 ? "TOP" : p === 1 ? "CAD 1" : p === 2 ? "CAD 2" : `MATI ${p}`;
+    const label = isGabung
+      ? "GABUNG (TOP+CAD1+CAD2)"
+      : p === 0 ? "TOP" : p === 1 ? "CAD 1" : p === 2 ? "CAD 2" : `MATI ${p}`;
     tiers.push({
       label,
       n,
@@ -517,23 +534,33 @@ export function renderRekap4D(impl, showTiers = "top") {
   tierBlock("BELAKANG", impl.tiersBack, impl.back.length);
 
   // blok 4D gabungan (hanya angka sah)
+  const isGabung = impl.outputMode === "digabung";
   L.push(
     (impl.useFilter ? "── 4D GABUNGAN (lolos filter) ──" : "── 4D GABUNGAN ──") +
-    (showTiers === "top" ? "" : showTiers === "all" ? " [TOP+CAD1+CAD2+MATI tampil]" : " [TOP+CAD1+CAD2 tampil]")
+    (isGabung ? " [MODE DIGABUNG — 1 kelompok]" :
+      showTiers === "top" ? "" : showTiers === "all" ? " [TOP+CAD1+CAD2+MATI tampil]" : " [TOP+CAD1+CAD2 tampil]")
   );
-  const maxP = Math.max(
-    impl.tiersFront.length ? impl.tiersFront.length - 1 : 0,
-    impl.tiersBack.length ? impl.tiersBack.length - 1 : 0
-  );
-  const showMax = maxShowTiers(showTiers);
-  for (let p = 0; p <= maxP; p++) {
-    const n = impl.counts4D[p] || 0;
-    if (!n) continue;
-    const t = p === 0 ? "TOP" : p === 1 ? "CAD 1" : p === 2 ? "CAD 2" : `MATI ${p}`;
-    L.push(`[${t}] ${n} Line`);
-    if (p < showMax) L.push(impl.tiers4D[p].join("*"));
-    else L.push("(daftar disembunyikan — pilih [TOP+CAD] atau [SEMUA] di opsi tampilan)");
+  if (isGabung) {
+    // 1 kelompok saja
+    const n = impl.counts4D[0] || 0;
+    L.push(`[GABUNG] ${n} Line  (depan: TOP∪CAD1∪CAD2 × belakang: TOP∪CAD1∪CAD2)`);
+    L.push((impl.tiers4D[0] || []).join("*") || "-");
     L.push("");
+  } else {
+    const maxP = Math.max(
+      impl.tiersFront.length ? impl.tiersFront.length - 1 : 0,
+      impl.tiersBack.length ? impl.tiersBack.length - 1 : 0
+    );
+    const showMax = maxShowTiers(showTiers);
+    for (let p = 0; p <= maxP; p++) {
+      const n = impl.counts4D[p] || 0;
+      if (!n) continue;
+      const t = p === 0 ? "TOP" : p === 1 ? "CAD 1" : p === 2 ? "CAD 2" : `MATI ${p}`;
+      L.push(`[${t}] ${n} Line`);
+      if (p < showMax) L.push(impl.tiers4D[p].join("*"));
+      else L.push("(daftar disembunyikan — pilih [TOP+CAD] atau [SEMUA] di opsi tampilan)");
+      L.push("");
+    }
   }
 
   // blok statistik pool 4D
