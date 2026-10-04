@@ -245,16 +245,45 @@ export function buildMergedTrek(items) {
   return finalLogs.join("\n\n" + "=".repeat(35) + "\n\n");
 }
 
-// ── Rekap 4D (gabungan AID depan + AI belakang) ──────────────────────
-// Front = rumus AID (2D depan), Back = rumus AI (2D belakang).
-// Poin 4D = poinFront(ab) + poinBack(cd); tier 0=[TOP4D].
-// Syarat (divalidasi di UI): minimal 1 rumus AI DAN 1 rumus AID tercentang.
+// ── Rekap 4D (AID depan × AI belakang, dengan filter AI3D) ──────────
+// Semantik:
+//   AID (AI 2D depan)   → poin-mati posisi 1-2
+//   AI  (AI 2D belakang)→ poin-mati posisi 3-4
+//   AI3D                → FILTER keras posisi 2-4 (C,K,E): sebuah 4D hanya
+//                         dihitung jika 3 digit belakangnya == AI3D rumus.
+//                         (Result 1745 & AI3D "745" → sah; "746" → tidak masuk
+//                         TOP/CAD/MATI sama sekali.)
+// Poin 4D sah = poinFront(ab) + poinBack(cd); tier 0=[TOP].
+// Syarat UI: minimal 1 AID DAN 1 AI tercentang (AI3D opsional).
 const FRONT_TYPES = new Set(["AID", "AD", "AI 2D DEPAN"]);
 const BACK_TYPES = new Set(["AI", "AI 2D BELAKANG"]);
+const AI3D_TYPES = new Set(["AI3D", "AI 3D", "A3"]);
+
+function aiDigits(f) {
+  return String(f.ai || "").replace(/\D/g, "");
+}
+
+// Kumpulkan kunci AI3D (3 digit belakang = posisi 2-4). AI >3 digit: ambil 3
+// digit terakhir; <3 digit: tak bisa jadi filter → dicatat sebagai diabaikan.
+export function ai3dKeys(formulas) {
+  const keys = new Set();
+  const ignored = [];
+  for (const f of formulas) {
+    const d = aiDigits(f);
+    if (d.length === 3) keys.add(d);
+    else if (d.length > 3) keys.add(d.slice(-3));
+    else ignored.push(`${f.type || "AI3D"}:${f.ai || "-"}`);
+  }
+  return { keys: [...keys].sort(), ignored };
+}
 
 export function buildRekap4D(items) {
-  const front = items.filter((x) => FRONT_TYPES.has(String(x.type || "").toUpperCase()));
-  const back = items.filter((x) => BACK_TYPES.has(String(x.type || "").toUpperCase()));
+  const norm = (t) => String(t || "").toUpperCase();
+  const front = items.filter((x) => FRONT_TYPES.has(norm(x.type)));
+  const back = items.filter((x) => BACK_TYPES.has(norm(x.type)));
+  const ai3d = items.filter((x) => AI3D_TYPES.has(norm(x.type)));
+  const { keys: ai3dFilter, ignored: ai3dIgnored } = ai3dKeys(ai3d);
+  const useFilter = ai3dFilter.length > 0;
 
   const ptsFront = scorePool(front);
   const ptsBack = scorePool(back);
@@ -262,29 +291,42 @@ export function buildRekap4D(items) {
   const tiersBack = groupTiers(ptsBack);
   const kresFront = kresOf(front);
   const kresBack = kresOf(back);
+  const kres3d = kresOf(ai3d);
 
-  // konvolusi 4D: poinTotal = poinFront + poinBack
+  // konvolusi 4D: poinTotal = poinFront + poinBack.
+  // Saat filter AI3D aktif: hanya kombinasi ab+cd yang bcd ∈ kunci yang dihitung.
   const maxP = front.length + back.length;
-  const tiers4D = []; // tiers4D[poin] = [ "abcd", ... ]
-  const counts4D = []; // counts4D[poin] = jumlah kombinasi
+  const tiers4D = [];   // tiers4D[poin] = ["abcd", ...] (hanya yang sah)
+  const counts4D = [];  // counts4D[poin] = jumlah
+  let kept = 0;         // total 4D lolos filter
+  let dropped = 0;      // total 4D terbuang oleh filter
   for (let p = 0; p <= maxP; p++) {
-    let list = [];
+    const list = [];
     for (let f = 0; f <= p; f++) {
       const b = p - f;
       const fs = tiersFront[f] || [];
       const bs = tiersBack[b] || [];
       for (const d2 of fs) {
-        for (const d2b of bs) list.push(d2 + d2b);
+        for (const d2b of bs) {
+          const code = d2 + d2b;
+          if (useFilter && !ai3dFilter.includes(code.slice(1, 4))) {
+            dropped++;
+            continue;
+          }
+          list.push(code);
+        }
       }
     }
+    kept += list.length;
     counts4D[p] = list.length;
     if (list.length) tiers4D[p] = list;
   }
 
   return {
-    front, back,
+    front, back, ai3d,
+    ai3dFilter, ai3dIgnored, useFilter, kept, dropped,
     ptsFront, ptsBack, tiersFront, tiersBack,
-    kresFront, kresBack,
+    kresFront, kresBack, kres3d,
     tiers4D, counts4D,
   };
 }
@@ -301,10 +343,10 @@ function bar(pct, width = 10) {
   return "█".repeat(Math.max(0, fill)) + "░".repeat(Math.max(0, width - fill));
 }
 
-// Statistik deskriptif pool 4D: distribusi tier, akumulasi coverage,
-// dan digit hidup per posisi dalam tier TOP.
+// Statistik pool 4D atas angka yang SAH (lolos filter AI3D bila aktif):
+// distribusi tier, akumulasi coverage, digit hidup per posisi di tier TOP.
 export function buildStats4D(impl) {
-  const TOTAL = 10000;
+  const TOTAL = impl.useFilter ? impl.kept : 10000;
   const tiers = [];
   const maxP = impl.front.length + impl.back.length;
   let cum = 0;
@@ -316,12 +358,11 @@ export function buildStats4D(impl) {
     tiers.push({
       label,
       n,
-      pct: +((n / TOTAL) * 100).toFixed(1),
+      pct: TOTAL ? +((n / TOTAL) * 100).toFixed(1) : 0,
       cumN: cum,
-      cumPct: +((cum / TOTAL) * 100).toFixed(1),
+      cumPct: TOTAL ? +((cum / TOTAL) * 100).toFixed(1) : 0,
     });
   }
-  // digit hidup per posisi dalam tier TOP
   const topList = impl.tiers4D[0] || [];
   const posSets = [new Set(), new Set(), new Set(), new Set()];
   for (const code of topList) {
@@ -338,19 +379,32 @@ export function buildStats4D(impl) {
 
 export function renderRekap4D(impl, showTiers = "top") {
   const L = [];
-  const label = (f, isFront) =>
-    isFront ? `${f.type} : ${f.ai}` : `${f.type} : ${f.ai}`;
-
-  L.push(`Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI`, "");
+  const header = impl.useFilter
+    ? `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI + ${impl.ai3d.length} AI3D (filter)`
+    : `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI`;
+  L.push(header, "");
 
   L.push("── 2D DEPAN (AID) ──");
-  impl.front.forEach((f) => L.push(label(f, true)));
+  impl.front.forEach((f) => L.push(`${f.type} : ${f.ai}`));
   L.push("");
   L.push("── 2D BELAKANG (AI) ──");
-  impl.back.forEach((f) => L.push(label(f, false)));
+  impl.back.forEach((f) => L.push(`${f.type} : ${f.ai}`));
   L.push("");
 
-  // KRES front & back
+  if (impl.ai3d.length) {
+    L.push("── AI3D (filter posisi 2-4 / C K E) ──");
+    impl.ai3d.forEach((f) => L.push(`${f.type} : ${f.ai}`));
+    L.push(`KUNCI: ${impl.ai3dFilter.join("*") || "-"}`);
+    if (impl.ai3dIgnored.length) {
+      L.push(`diabaikan (bukan 3 digit): ${impl.ai3dIgnored.join(", ")}`);
+    }
+    L.push(
+      `Filter membuang ${impl.dropped} kombinasi; ${impl.kept} 4D ikut dihitung.`
+    );
+    L.push("");
+  }
+
+  // KRES per grup
   const kresBlock = (name, kres) => {
     if (kres.kresLevels.length === 0) return;
     L.push(`--------------- ${name}`);
@@ -361,7 +415,8 @@ export function renderRekap4D(impl, showTiers = "top") {
   };
   kresBlock("DEPAN", impl.kresFront);
   kresBlock("BELAKANG", impl.kresBack);
-  if (impl.kresFront.kresLevels.length || impl.kresBack.kresLevels.length) L.push("");
+  if (impl.useFilter) kresBlock("AI3D", impl.kres3d);
+  if (impl.kresFront.kresLevels.length || impl.kresBack.kresLevels.length || impl.kres3d.kresLevels.length) L.push("");
 
   // blok tier 2D depan & belakang (ringkas)
   const tierBlock = (name, tiers, n) => {
@@ -378,8 +433,8 @@ export function renderRekap4D(impl, showTiers = "top") {
   tierBlock("DEPAN", impl.tiersFront, impl.front.length);
   tierBlock("BELAKANG", impl.tiersBack, impl.back.length);
 
-  // blok 4D gabungan
-  L.push("── 4D GABUNGAN ──");
+  // blok 4D gabungan (hanya angka sah)
+  L.push(impl.useFilter ? "── 4D GABUNGAN (lolos filter AI3D) ──" : "── 4D GABUNGAN ──");
   const maxP = impl.front.length + impl.back.length;
   const showMax = maxShowTiers(showTiers);
   for (let p = 0; p <= maxP; p++) {
@@ -395,7 +450,11 @@ export function renderRekap4D(impl, showTiers = "top") {
   // blok statistik pool 4D
   const stats = buildStats4D(impl);
   L.push("── STATISTIK POOL 4D ──");
-  L.push(`Total kombinasi : ${stats.TOTAL}`);
+  L.push(
+    impl.useFilter
+      ? `Total sah (lolos AI3D) : ${stats.TOTAL} (dari 10.000; terbuang ${impl.dropped})`
+      : `Total kombinasi : ${stats.TOTAL}`
+  );
   stats.tiers.forEach((t) => {
     L.push(
       `[${t.label}]`.padEnd(9) +
