@@ -267,6 +267,25 @@
   resize: vertical;
 }
 
+.tierSelect {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 600;
+  font-size: 0.72rem;
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+}
+
+.hintText {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-left: 0.5rem;
+  flex-grow: 1;
+  max-width: 300px;
+}
+
 @media (max-width: 640px) {
   .btnReset {
     margin-left: 0;

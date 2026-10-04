@@ -20,11 +20,27 @@ function parseNumbers(raw, len) {
   return parts.filter((p) => /^\d+$/.test(p));
 }
 
+// Konversi daftar angka dari len A menjadi len B
+// Mode: "depan" (ambil n digit pertama), "tengah" (n digit tengah), "belakang" (ambil n digit terakhir)
+function convertNumbers(numbers, fromLen, toLen, mode = "depan") {
+  if (mode === "depan") {
+    return numbers.map((n) => n.toString().padStart(fromLen, "0").slice(0, toLen));
+  } else if (mode === "belakang") {
+    return numbers.map((n) => n.toString().padStart(fromLen, "0").slice(-toLen));
+  } else if (mode === "tengah") {
+    // ambil 2 digit tengah dari 4-digit → slice index 1:3
+    if (fromLen !== 4 || toLen !== 3) return [];
+    return numbers.map((n) => n.toString().padStart(fromLen, "0").slice(1, 4));
+  }
+  return numbers;
+}
+
 export default function PembagiPage() {
   const [raw, setRaw] = useState("");
   const [size, setSize] = useState(400);
   const [copiedIdx, setCopiedIdx] = useState(null);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [convertMode, setConvertMode] = useState(""); // "" | "depan" | "tengah" | "belakang"
 
   const digits = useMemo(() => {
     const m = String(raw).match(/\d+/g);
@@ -34,15 +50,30 @@ export default function PembagiPage() {
 
   const numbers = useMemo(() => parseNumbers(raw, digits), [raw, digits]);
 
+  // Hitung ulang konversi jika needed
+  const convertedNumbers = useMemo(() => {
+    if (!convertMode || !numbers.length) return numbers;
+    // Konversi dari current length ke target (auto-detect dari mode)
+    const fromLen = digits;
+    let toLen;
+    if (convertMode === "depan" || convertMode === "belakang") {
+      // untuk 4D → 3D: ambil 3 digit (depan/belakang/tengah)
+      toLen = 3;
+    } else {
+      toLen = 3;
+    }
+    return convertNumbers(numbers, fromLen, toLen, convertMode);
+  }, [numbers, convertMode, digits]);
+
   const derets = useMemo(() => {
-    if (!numbers.length) return [];
+    if (!convertedNumbers.length) return [];
     const per = Math.max(1, parseInt(size, 10) || 400);
     const out = [];
-    for (let i = 0; i < numbers.length; i += per) {
-      out.push(numbers.slice(i, i + per));
+    for (let i = 0; i < convertedNumbers.length; i += per) {
+      out.push(convertedNumbers.slice(i, i + per));
     }
     return out;
-  }, [numbers, size]);
+  }, [convertedNumbers, size]);
 
   const doCopy = async (text, idx) => {
     try {
@@ -106,17 +137,41 @@ export default function PembagiPage() {
             className={styles.btnReset}
             onClick={() => {
               setRaw("");
+              setConvertMode("");
               setCopiedIdx(null);
             }}
           >
             🗑 KOSONGKAN
           </button>
         </div>
+        {/* Opsi konversi 4D → 3D */}
+        {digits === 4 && (
+          <div className={styles.ctrlRow}>
+            <label className={styles.panelLabel}>🔄 Konversi 4D ke 3D:</label>
+            <select
+              value={convertMode}
+              onChange={(e) => setConvertMode(e.target.value)}
+              className={styles.tierSelect}
+              title="Konversi angka dari 4 digit ke 3 digit"
+            >
+              <option value="">Tidak ada (biarkan 4D)</option>
+              <option value="depan">Ambil 3 Digit DEPAN</option>
+              <option value="tengah">Ambil 3 Digit TENGAH</option>
+              <option value="belakang">Ambil 3 Digit BELAKANG</option>
+            </select>
+            <span className={styles.hintText}>Contoh: 1234 → DEPAN=123, TENGAH=234, BELAKANG=234</span>
+          </div>
+        )}
         {numbers.length > 0 && (
           <div className={styles.statRow}>
             <span className={styles.statChip}>Total: <b>{numbers.length}</b> angka</span>
             <span className={styles.statChip}>Digit: <b>{digits}</b>D</span>
             <span className={styles.statChip}>Deret: <b>{derets.length}</b></span>
+            {convertedNumbers.length !== numbers.length && convertMode && (
+              <span className={styles.statChipWarn}>
+                Konversi dari <b>{digits}D → 3D</b>: <b>{convertMode.toUpperCase()}</b>
+              </span>
+            )}
             {numbers.length % Math.max(1, parseInt(size, 10) || 400) !== 0 && (
               <span className={styles.statChipWarn}>
                 Deret terakhir: <b>{numbers.length % Math.max(1, parseInt(size, 10) || 400)}</b> angka (sisa)
