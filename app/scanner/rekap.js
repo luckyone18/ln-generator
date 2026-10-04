@@ -468,7 +468,10 @@ export function renderRekap4D(impl, showTiers = "top") {
   tierBlock("BELAKANG", impl.tiersBack, impl.back.length);
 
   // blok 4D gabungan (hanya angka sah)
-  L.push(impl.useFilter ? "── 4D GABUNGAN (lolos filter) ──" : "── 4D GABUNGAN ──");
+  L.push(
+    (impl.useFilter ? "── 4D GABUNGAN (lolos filter) ──" : "── 4D GABUNGAN ──") +
+    (showTiers === "top" ? "" : showTiers === "all" ? " [TOP+CAD1+CAD2+MATI tampil]" : " [TOP+CAD1+CAD2 tampil]")
+  );
   const maxP = impl.front.length + impl.back.length;
   const showMax = maxShowTiers(showTiers);
   for (let p = 0; p <= maxP; p++) {

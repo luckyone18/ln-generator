@@ -98,7 +98,7 @@ export default function ScannerPage() {
   const [editDayCode, setEditDayCode] = useState(null); // code yg sedang di-edit hari (null = tampil teks)
 
   // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
-  const [showTiers, setShowTiers] = useState("top"); // top | cad12 | all
+  const [showTiers, setShowTiers] = useState("cad12"); // top | cad12 | all
   const [poolFilter, setPoolFilter] = useState(""); // "" = semua pool
   const [rmsFilter, setRmsFilter] = useState(""); // "" = semua tipe RMS
   const [dayFilter, setDayFilter] = useState(""); // "" = semua hari
@@ -1546,8 +1546,8 @@ export default function ScannerPage() {
               className={styles.tierSelect}
               title="Tier 4D yang ditampilkan list penuhnya di terminal"
             >
-              <option value="top">Tampil: TOP saja</option>
               <option value="cad12">Tampil: TOP+CAD 1+CAD 2</option>
+              <option value="top">Tampil: TOP saja</option>
               <option value="all">Tampil: SEMUA tier</option>
             </select>
             <button
