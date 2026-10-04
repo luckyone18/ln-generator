@@ -99,6 +99,7 @@ export default function ScannerPage() {
 
   // ── Bank Rumus (opsi A: anonymous device ID + sync code) ────────
   const [showTiers, setShowTiers] = useState("cad12"); // top | cad12 | all
+  const [filterMode, setFilterMode] = useState("top"); // "top" | "full" for AI3D/AIT filter
   const [poolFilter, setPoolFilter] = useState(""); // "" = semua pool
   const [rmsFilter, setRmsFilter] = useState(""); // "" = semua tipe RMS
   const [dayFilter, setDayFilter] = useState(""); // "" = semua hari
@@ -830,7 +831,7 @@ export default function ScannerPage() {
       );
       return;
     }
-    const impl = buildRekap4D(items);
+    const impl = buildRekap4D(items, filterMode);
     setTrekLog(renderRekap4D(impl, showTiers));
   };
 
@@ -1549,6 +1550,32 @@ export default function ScannerPage() {
               <option value="cad12">Tampil: TOP+CAD 1+CAD 2</option>
               <option value="top">Tampil: TOP saja</option>
               <option value="all">Tampil: SEMUA tier</option>
+            </select>
+            <select
+              value={filterMode}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFilterMode(v);
+                // Re-render bila terminal sedang menampilkan Rekap 4D
+                if (trekLog.includes("4D GABUNGAN")) {
+                  const items = checkedCodes
+                    .map((c) =>
+                      savedItems.find((x) => x.code === c) || foundItems.find((x) => x.code === c)
+                    )
+                    .filter(Boolean);
+                  const typ = (t) => String(t || "").toUpperCase();
+                  const hasFront = items.some((x) => ["AID", "AD", "AI 2D DEPAN"].includes(typ(x.type)));
+                  const hasBack = items.some((x) => ["AI", "AI 2D BELAKANG"].includes(typ(x.type)));
+                  if (hasFront && hasBack) {
+                    setTrekLog(renderRekap4D(buildRekap4D(items, v), showTiers));
+                  }
+                }
+              }}
+              className={styles.tierSelect}
+              title="Mode filter AI3D/AIT: 'TOP' = hanya angka TOP; 'FULL' = TOP+CAD 1+CAD 2"
+            >
+              <option value="top">Filter: TOP saja</option>
+              <option value="full">Filter: FULL (TOP+CAD 1+CAD 2)</option>
             </select>
             <button
               type="button"

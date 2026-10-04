@@ -7,7 +7,7 @@
 // Poin "mati" utk satu angka 2D ("00".."99") dari satu formula.
 function killPoint(a, f) {
   const k = parseInt(a[0], 10);
-  const e = parseInt(a[1], 10);
+  const e = parseInt(a[a.length - 1], 10);
   const biji = k + e > 9 ? k + e - 9 : k + e;
   const aiStr = String(f.ai || "");
   const digits = aiStr.replace(/[^0-9]/g, "").split("");
@@ -56,6 +56,28 @@ function groupTiers(pts) {
     tiers[p].push(a);
   }
   return tiers;
+}
+
+// Poin per kandidat N-digit (000..999 utk AI3D, 00..99 utk AIT).
+// Mekanisme identik dengan rekap 2D AID/AI: poin = jumlah rumus yang
+// "mematikan" kandidat; tier 0 = TOP (tidak dimatikan rumus mana pun).
+function scorePoolN(formulas, n) {
+  const pts = {};
+  const total = 10 ** n;
+  for (let i = 0; i < total; i++) {
+    const a = String(i).padStart(n, "0");
+    let p = 0;
+    for (const f of formulas) p += killPoint(a, f);
+    pts[a] = p;
+  }
+  return pts;
+}
+
+// Rekap satu grup → { tiers, top }; top = daftar kandidat poin 0 (TOP).
+function rekapGroup(formulas, n) {
+  if (!formulas.length) return { tiers: [], top: [] };
+  const tiers = groupTiers(scorePoolN(formulas, n));
+  return { tiers, top: tiers[0] || [] };
 }
 
 // KRES: digit muncul di >= 2 formula, dikelompokkan per frekuensi.
@@ -263,43 +285,36 @@ const BACK_TYPES = new Set(["AI", "AI 2D BELAKANG"]);
 const AI3D_TYPES = new Set(["AI3D", "AI 3D", "A3"]);
 const AIT_TYPES = new Set(["AIT", "AT", "AI 2D TENGAH"]);
 
-function aiDigits(f) {
-  return String(f.ai || "").replace(/\D/g, "");
+// Kunci filter diambil dari REKAP TIER per-grup rumus — bukan potongan angka main.
+//   AI3D → pool 3-digit (000-999), dipakai utk posisi 2-4 (C K E)
+//   AIT  → pool 2-digit (00-99),   dipakai utk posisi 2-3 (C K)
+// mode "top"  → hanya kandidat TOP (poin 0)
+// mode "full" → TOP + CAD 1 + CAD 2 (poin 0,1,2)
+function pickKeys(tier, mode) {
+  if (!tier || !tier.tiers || !tier.tiers.length) return [];
+  const t = tier.tiers;
+  const want = mode === "full" ? [0, 1, 2] : [0];
+  const out = [];
+  for (const p of want) if (t[p]) out.push(...t[p]);
+  return [...new Set(out)].sort();
 }
 
-// Kumpulkan kunci filter N-digit. Slice digit AI sesuai orientasi:
-//   tail (AI3D) → N digit terakhir · head (AIT) → N digit pertama.
-// Panjang AI tidak pas → dicatat sebagai diabaikan.
-function filterKeys(formulas, len, label, orient) {
-  const keys = new Set();
-  const ignored = [];
-  for (const f of formulas) {
-    const d = aiDigits(f);
-    if (d.length === len) keys.add(d);
-    else if (d.length > len) keys.add(orient === "head" ? d.slice(0, len) : d.slice(-len));
-    else ignored.push(`${f.type || label}:${f.ai || "-"}`);
-  }
-  return { keys: [...keys].sort(), ignored };
-}
-
-// Kunci AI3D (3 digit belakang = posisi 2-4).
-export function ai3dKeys(formulas) {
-  return filterKeys(formulas, 3, "AI3D", "tail");
-}
-
-// Kunci AIT (2 digit tengah = posisi 2-3).
-export function aitKeys(formulas) {
-  return filterKeys(formulas, 2, "AIT", "head");
-}
-
-export function buildRekap4D(items) {
+export function buildRekap4D(items, filterMode = "top") {
   const norm = (t) => String(t || "").toUpperCase();
   const front = items.filter((x) => FRONT_TYPES.has(norm(x.type)));
   const back = items.filter((x) => BACK_TYPES.has(norm(x.type)));
   const ai3d = items.filter((x) => AI3D_TYPES.has(norm(x.type)));
   const ait = items.filter((x) => AIT_TYPES.has(norm(x.type)));
-  const { keys: ai3dFilter, ignored: ai3dIgnored } = ai3dKeys(ai3d);
-  const { keys: aitFilter, ignored: aitIgnored } = aitKeys(ait);
+
+  // Rekap tier per-rumus (mekanisme sama seperti rekap AI/AID):
+  // AI3D → pool 3-digit; AIT → pool 2-digit. tiers[0]=TOP, [1]=CAD1, [2]=CAD2.
+  const tierAi3d = ai3d.length ? rekapGroup(ai3d, 3) : null;
+  const tierAit = ait.length ? rekapGroup(ait, 2) : null;
+
+  // KUNCI filter = TOP (mode "top") atau TOP+CAD1+CAD2 (mode "full").
+  const ai3dFilter = pickKeys(tierAi3d, filterMode); // 3-digit strings
+  const aitFilter = pickKeys(tierAit, filterMode);   // 2-digit strings
+
   const useFilter = ai3dFilter.length > 0 || aitFilter.length > 0;
   const hasAi3d = ai3dFilter.length > 0;
   const hasAit = aitFilter.length > 0;
@@ -344,9 +359,10 @@ export function buildRekap4D(items) {
 
   return {
     front, back, ai3d, ait,
-    ai3dFilter, ai3dIgnored, aitFilter, aitIgnored, useFilter, kept, dropped,
+    ai3dFilter, aitFilter, filterMode, useFilter, kept, dropped,
     ptsFront, ptsBack, tiersFront, tiersBack,
     kresFront, kresBack, kres3d, kresTt,
+    tierAi3d, tierAit,
     tiers4D, counts4D,
   };
 }
@@ -402,6 +418,22 @@ export function renderRekap4D(impl, showTiers = "top") {
   const filt = []
     .concat(impl.ai3d.length ? [`${impl.ai3d.length} AI3D`] : [])
     .concat(impl.ait.length ? [`${impl.ait.length} AIT`] : []);
+  
+  // Helper: tampilkan blok tier per grup N-digit.
+  // TOP/CAD1/CAD2 ditampilkan penuh; MATI hanya count.
+  const tierBlockN = (name, tiers, n) => {
+    if (!tiers || !tiers.length) return;
+    L.push(`── [${name}] TIER ${n}-digit ──`);
+    const maxP = Math.max(...Object.keys(tiers).map(Number), 2);
+    for (let p = 0; p <= maxP; p++) {
+      if (tiers[p] && tiers[p].length) {
+        const t = p === 0 ? "TOP" : p === 1 ? "CAD 1" : p === 2 ? "CAD 2" : `MATI ${p}`;
+        L.push(`[${t}] ${tiers[p].length} Line`);
+        if (p < 3) L.push(tiers[p].join("*"));
+        L.push("");
+      }
+    }
+  };
   const header = impl.useFilter
     ? `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI + ${filt.join(" + ")} (filter)`
     : `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI`;
@@ -417,18 +449,18 @@ export function renderRekap4D(impl, showTiers = "top") {
   if (impl.ai3d.length) {
     L.push("── AI3D (filter posisi 2-4 / C K E) ──");
     impl.ai3d.forEach((f) => L.push(`${f.type} : ${f.ai}`));
+    L.push("── [AI3D] TIER 3D ──");
+    tierBlockN("AI3D", impl.tierAi3d?.tiers, 3);
     L.push(`KUNCI: ${impl.ai3dFilter.join("*") || "-"}`);
-    if (impl.ai3dIgnored.length) {
-      L.push(`diabaikan (bukan 3 digit): ${impl.ai3dIgnored.join(", ")}`);
-    }
+    L.push(`mode: ${impl.filterMode || "top"}`);
   }
   if (impl.ait.length) {
     L.push("── AIT (filter posisi 2-3 / C K) ──");
     impl.ait.forEach((f) => L.push(`${f.type} : ${f.ai}`));
+    L.push("── [AIT] TIER 2D ──");
+    tierBlockN("AIT", impl.tierAit?.tiers, 2);
     L.push(`KUNCI: ${impl.aitFilter.join("*") || "-"}`);
-    if (impl.aitIgnored.length) {
-      L.push(`diabaikan (bukan 2 digit): ${impl.aitIgnored.join(", ")}`);
-    }
+    L.push(`mode: ${impl.filterMode || "top"}`);
   }
   if (impl.useFilter) {
     L.push(
