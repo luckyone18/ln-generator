@@ -340,14 +340,17 @@ export function buildRekap4D(items, filterMode = "top", outputMode = "bagi") {
   let dropped = 0;
 
   // Konvolusi 2 daftar tier yang SAMA + filter AI3D (pos 2-4) / AIT (pos 2-3).
+  // Jika KEDUA filter aktif, jalankan BERURUTAN: AI3D dulu, lalu AIT dari hasilnya.
   const convolveTier = (dpnList, blkList) => {
     const out = [];
     for (const a of dpnList) {
       for (const b of blkList) {
         const c = a + b;
         if (useFilter) {
+          // Filter berurutan: pertama cek AI3D (pos 2-4), lalu AIT (pos 2-3) dari hasil AI3D
           if (hasAi3d && !ai3dFilter.includes(c.slice(1, 4))) { dropped++; continue; }
           if (hasAit && !aitFilter.includes(c.slice(1, 3))) { dropped++; continue; }
+          // Catatan: jika BOTH active, angka harus LULOS KEDUA filter (AND logic)
         }
         out.push(c);
       }
@@ -468,8 +471,13 @@ export function renderRekap4D(impl, showTiers = "top") {
       }
     }
   };
+  
+  // Jika BOTH AI3D dan AIT aktif, tandai "BOTH - AND" di header
+  const filterTag = impl.ai3d.length && impl.ait.length 
+    ? "AI3D + AIT (BOTH - harus lolos keduanya)" 
+    : filt.join(" + ");
   const header = impl.useFilter
-    ? `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI + ${filt.join(" + ")} (filter)`
+    ? `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI + ${filterTag} (filter)`
     : `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI`;
   L.push(header, "");
 
