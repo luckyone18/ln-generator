@@ -180,7 +180,8 @@ export default function RekapManualPage() {
             <pre className={styles.terminalBody}>{result4D.join("*")}</pre>
           </section>
 
-          {/* ── Panel 2: Pembagi ── */}
+          {/* ── Panel 2: Pembagi (muncul hanya jika 4D > 400) ── */}
+          {result4D.length > 400 && (
           <section className={styles.resultPanel}>
             <div className={styles.resultHead}>
               <h2>✂️ PEMBAGI 4D (PER DERET)</h2>
@@ -225,8 +226,10 @@ export default function RekapManualPage() {
               </div>
             ))}
           </section>
+          )}
 
-          {/* ── Panel 3: 3D Creator ── */}
+          {/* ── Panel 3: 3D Creator (muncul hanya jika 3D > 400) ── */}
+          {result3D.length > 400 && (
           <section className={styles.resultPanel}>
             <div className={styles.resultHead}>
               <h2>🔢 PEMBUAT 3D (POSISI 2-4)</h2>
@@ -239,6 +242,7 @@ export default function RekapManualPage() {
             </div>
             <pre className={styles.terminalBody}>{result3D.join("*")}</pre>
           </section>
+          )}
         </>
       )}
     </main>
