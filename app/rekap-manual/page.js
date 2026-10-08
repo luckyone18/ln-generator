@@ -3,12 +3,10 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import styles from "./rekap-manual.module.css";
-import { buildRekap4D, renderRekap4D } from "../scanner/rekap";
 
 // Parse daftar angka dari input bebas: pisah * spasi koma ; | newline.
-// Token yang panjangnya kelipatan pas dari len akan dipotong (mis. "745746" →
-// 745,746 utk len=3). Token lebih pendek dibiarkan apa adanya (mis. "7"),
-// persis seperti mesin Rekap 4D memperlakukan AI pendek.
+// Token yang panjangnya kelipatan pas dari len akan dipotong (mis. "123456" →
+// 12,34,56 utk len=2; "745746" → 745,746 utk len=3).
 function parseList(raw, len) {
   const s = String(raw || "").trim();
   if (!s) return [];
@@ -25,29 +23,8 @@ function parseList(raw, len) {
   return out;
 }
 
-// renderTrekHtml sederhana (escape + tag warna [h]/[m]).
-function renderTrekHtml(raw) {
-  let s = String(raw || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  s = s.replace(/\[h\]([\s\S]*?)\[\/h\]/gi, '<span style="color:#10b981;font-weight:900;">$1</span>');
-  s = s.replace(/\[m\]([\s\S]*?)\[\/m\]/gi, '<span style="color:#ef4444;font-weight:900;">$1</span>');
-  return s;
-}
-
-const FIELD_META = [
-  { key: "front", len: 2, label: "① 2D ANGKA DEPAN", ph: "mis: 12*34*56", hint: "Poin-mati posisi 1-2 (AID). Dipakai sebagai sisi depan 4D." },
-  { key: "back", len: 2, label: "② 2D ANGKA BELAKANG", ph: "mis: 45*78", hint: "Poin-mati posisi 3-4 (AI). Dipakai sebagai sisi belakang 4D." },
-  { key: "mid", len: 2, label: "③ 2D ANGKA TENGAH (filter)", ph: "mis: 74", hint: "FILTER keras posisi 2-3 (C·K). Kosongkan bila tidak dipakai." },
-  { key: "d3", len: 3, label: "④ 3D (filter)", ph: "mis: 745", hint: "FILTER keras posisi 2-4 (C·K·E). Kosongkan bila tidak dipakai." },
-];
-
 export default function RekapManualPage() {
   const [raw, setRaw] = useState({ front: "", back: "", mid: "", d3: "" });
-  const [showTiers, setShowTiers] = useState("cad12");
-  const [filterMode, setFilterMode] = useState("top");
-  const [outputMode, setOutputMode] = useState("bagi");
   const [copied, setCopied] = useState(false);
 
   const lists = useMemo(
@@ -62,28 +39,39 @@ export default function RekapManualPage() {
 
   const set = (k) => (e) => setRaw((p) => ({ ...p, [k]: e.target.value }));
 
-  const output = useMemo(() => {
+  const result4D = useMemo(() => {
     // Butuh minimal 1 depan & 1 belakang
-    if (!lists.front.length || !lists.back.length) return "";
-    // Bentuk items seperti Rekap 4D: tiap angka = 1 "rumus".
-    const items = [
-      ...lists.front.map((ai) => ({ type: "AID", ai })),
-      ...lists.back.map((ai) => ({ type: "AI", ai })),
-      ...lists.mid.map((ai) => ({ type: "AIT", ai })),
-      ...lists.d3.map((ai) => ({ type: "AI3D", ai })),
-    ];
-    const impl = buildRekap4D(items, filterMode, outputMode);
-    return renderRekap4D(impl, showTiers, "Rekap Manual");
-  }, [lists, showTiers, filterMode, outputMode]);
+    if (!lists.front.length || !lists.back.length) return [];
+
+    const hit = [];
+    for (const f of lists.front) {
+      for (const b of lists.back) {
+        const code = (f + b); // 4-digit string
+        if (code.length !== 4) continue;
+
+        // Filter AIT (pos 2-3 / C·K)
+        if (lists.mid.length) {
+          const ck = code.slice(1, 3);
+          if (!lists.mid.includes(ck)) continue;
+        }
+        // Filter AI3D (pos 2-4 / C·K·E)
+        if (lists.d3.length) {
+          const cke = code.slice(1, 4);
+          if (!lists.d3.includes(cke)) continue;
+        }
+        hit.push(code);
+      }
+    }
+    // Hapus duplikat & urut numerik
+    return [...new Set(hit)].sort((a, b) => Number(a) - Number(b));
+  }, [lists]);
 
   const copyOut = async () => {
     try {
-      await navigator.clipboard.writeText(output);
+      await navigator.clipboard.writeText(result4D.join("*"));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* noop */
-    }
+    } catch { /* noop */ }
   };
 
   const clearAll = () => {
@@ -95,7 +83,7 @@ export default function RekapManualPage() {
     <main className={styles.wrap}>
       <header className={styles.header}>
         <h1>🧮 REKAP MANUAL</h1>
-        <p>Rekap 4D dengan angka yang diisi manual — 2D depan × 2D belakang, difilter 2D tengah & 3D</p>
+        <p>Konvolusi langsung dari angka TOP/CAD1/CAD2 — output 4D saja, filtered by 2D tengah & 3D</p>
         <div className={styles.navRow}>
           <Link href="/" className={styles.navPill}>Generator LN</Link>
           <Link href="/scanner" className={styles.navPill}>Scanner Pro</Link>
@@ -106,73 +94,83 @@ export default function RekapManualPage() {
 
       <section className={styles.inputPanel}>
         <div className={styles.grid}>
-          {FIELD_META.map((f) => (
-            <div key={f.key} className={styles.field}>
-              <label className={styles.fieldLabel}>{f.label}</label>
-              <textarea
-                value={raw[f.key]}
-                onChange={set(f.key)}
-                placeholder={f.ph}
-                rows={3}
-                className={styles.inputArea}
-              />
-              <span className={styles.hintText}>{f.hint}</span>
-              <span className={styles.countChip}>{lists[f.key].length} angka</span>
-            </div>
-          ))}
+          <div className={styles.field}>
+            <label className={styles.fieldLabel}>① 2D ANGKA DEPAN (TOP/CAD…)</label>
+            <textarea
+              value={raw.front}
+              onChange={(e) => set("front")(e)}
+              placeholder="12*34*56 atau 12 34 56"
+              rows={3}
+              className={styles.inputArea}
+            />
+            <span className={styles.hintText}>Tulis deretan angka 2D (TOP/CAD1/CAD2). Auto-pisah bila pakai * / spasi.</span>
+            <span className={styles.countChip}>{lists.front.length} angka</span>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.fieldLabel}>② 2D ANGKA BELAKANG (TOP/CAD…)</label>
+            <textarea
+              value={raw.back}
+              onChange={(e) => set("back")(e)}
+              placeholder="45*78"
+              rows={3}
+              className={styles.inputArea}
+            />
+            <span className={styles.hintText}>Tulis deretan angka 2D (TOP/CAD1/CAD2).</span>
+            <span className={styles.countChip}>{lists.back.length} angka</span>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.fieldLabel}>③ 2D TENGAH FILTER (posisi 2-3)</label>
+            <textarea
+              value={raw.mid}
+              onChange={(e) => set("mid")(e)}
+              placeholder="74"
+              rows={3}
+              className={styles.inputArea}
+            />
+            <span className={styles.hintText}>Filter keras: kode 4D harus punya posisi 2-3 = salah satu angka di sini. Kosongkan jika tidak dipakai.</span>
+            <span className={styles.countChip}>{lists.mid.length} angka</span>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.fieldLabel}>④ 3D FILTER (posisi 2-4)</label>
+            <textarea
+              value={raw.d3}
+              onChange={(e) => set("d3")(e)}
+              placeholder="745"
+              rows={3}
+              className={styles.inputArea}
+            />
+            <span className={styles.hintText}>Filter keras: kode 4D harus punya posisi 2-4 = salah satu angka di sini. Kosongkan jika tidak dipakai.</span>
+            <span className={styles.countChip}>{lists.d3.length} angka</span>
+          </div>
         </div>
 
         <div className={styles.ctrlRow}>
-          <label className={styles.selLabel}>
-            Tampil:
-            <select value={showTiers} onChange={(e) => setShowTiers(e.target.value)} className={styles.select}>
-              <option value="cad12">TOP+CAD 1+CAD 2</option>
-              <option value="top">TOP saja</option>
-              <option value="all">SEMUA tier</option>
-            </select>
-          </label>
-          <label className={styles.selLabel}>
-            Filter:
-            <select value={filterMode} onChange={(e) => setFilterMode(e.target.value)} className={styles.select}>
-              <option value="top">TOP saja</option>
-              <option value="full">FULL (TOP+CAD 1+CAD 2)</option>
-            </select>
-          </label>
-          <label className={styles.selLabel}>
-            Output:
-            <select value={outputMode} onChange={(e) => setOutputMode(e.target.value)} className={styles.select}>
-              <option value="bagi">BAGI (per tier)</option>
-              <option value="digabung">DIGABUNG (1 kelompok)</option>
-            </select>
-          </label>
           <button type="button" className={styles.btnReset} onClick={clearAll}>
             🗑 KOSONGKAN
           </button>
-        </div>
-
-        <div className={styles.statRow}>
-          <span className={styles.statChip}>2D depan: <b>{lists.front.length}</b></span>
-          <span className={styles.statChip}>2D belakang: <b>{lists.back.length}</b></span>
-          <span className={styles.statChip}>2D tengah: <b>{lists.mid.length}</b></span>
-          <span className={styles.statChip}>3D: <b>{lists.d3.length}</b></span>
+          <span className={styles.statChip}>4D Sah: <b>{result4D.length}</b></span>
           {(!lists.front.length || !lists.back.length) && (
             <span className={styles.statChipWarn}>Butuh minimal 1 angka 2D depan & 1 angka 2D belakang</span>
           )}
         </div>
       </section>
 
-      {output && (
+      {result4D.length > 0 && (
         <section className={styles.resultPanel}>
           <div className={styles.resultHead}>
-            <h2>🖥️ HASIL REKAP MANUAL</h2>
+            <h2>📦 HASIL 4D (LOLOS FILTER)</h2>
             <button type="button" className={styles.btnCopy} onClick={copyOut}>
               {copied ? "✓ TERSALIN" : "📋 COPY"}
             </button>
           </div>
           <pre
             className={styles.terminalBody}
-            dangerouslySetInnerHTML={{ __html: renderTrekHtml(output) }}
-          />
+          >
+{result4D.join("\n")}
+          </pre>
         </section>
       )}
     </main>
