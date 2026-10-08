@@ -28,7 +28,6 @@ export default function RekapManualPage() {
 
   // Opsi Pembagi & 3D
   const [perBatch, setPerBatch] = useState(50);
-  const [mode3D, setMode3D] = useState("belakang"); // depan | tengah | belakang
 
   const lists = useMemo(
     () => ({
@@ -67,17 +66,12 @@ export default function RekapManualPage() {
     return out;
   }, [result4D, perBatch]);
 
-  // ── 3. 3D creator: ambil 3 digit dari tiap 4D ─────────────────────
+  // ── 3. 3D creator: ambil posisi 2-4 (3 digit belakang) dari tiap 4D ──
   const result3D = useMemo(() => {
     if (!result4D.length) return [];
-    const conv = result4D.map((n) => {
-      const s = n.padStart(4, "0");
-      if (mode3D === "depan") return s.slice(0, 3);
-      if (mode3D === "tengah") return s.slice(1, 4);
-      return s.slice(-3); // belakang
-    });
+    const conv = result4D.map((n) => n.padStart(4, "0").slice(-3));
     return [...new Set(conv)].sort();
-  }, [result4D, mode3D]);
+  }, [result4D]);
 
   const copyText = async (text, key) => {
     try {
@@ -235,21 +229,13 @@ export default function RekapManualPage() {
           {/* ── Panel 3: 3D Creator ── */}
           <section className={styles.resultPanel}>
             <div className={styles.resultHead}>
-              <h2>🔢 PEMBUAT 3D (DARI 4D)</h2>
-              <label className={styles.selLabel}>
-                Ambil 3 digit:
-                <select value={mode3D} onChange={(e) => setMode3D(e.target.value)} className={styles.select}>
-                  <option value="belakang">BELAKANG (CE)</option>
-                  <option value="depan">DEPAN (AB)</option>
-                  <option value="tengah">TENGAH (BC)</option>
-                </select>
-              </label>
+              <h2>🔢 PEMBUAT 3D (POSISI 2-4)</h2>
               <button type="button" className={styles.btnCopy} onClick={() => copyText(result3D.join("*"), "3d")}>
                 {copiedKey === "3d" ? "✓ TERSALIN" : "📋 COPY"}
               </button>
             </div>
             <div className={styles.hintText} style={{ marginBottom: "0.75rem" }}>
-              {result4D.length} 4D → <b>{result3D.length}</b> 3D unik ({mode3D})
+              {result4D.length} 4D → <b>{result3D.length}</b> 3D unik (posisi 2-4)
             </div>
             <pre className={styles.terminalBody}>{result3D.join("*")}</pre>
           </section>
