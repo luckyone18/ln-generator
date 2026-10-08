@@ -50,6 +50,8 @@ export default function RekapManualPage() {
   const [claimMsg, setClaimMsg] = useState("");
   const [saveMsg, setSaveMsg] = useState("");
   const [showSets, setShowSets] = useState(false);
+  const [find4d, setFind4d] = useState("");
+  const [find3d, setFind3d] = useState("");
   const setsRef = useRef([]);
   const initRef = useRef(false);
 
@@ -105,6 +107,37 @@ export default function RekapManualPage() {
     for (let i = 0; i < result3D.length; i += size) out.push(result3D.slice(i, i + size));
     return out;
   }, [result3D, perBatch3D]);
+
+  // ── Pencarian angka (temukan) ────────────────────────────────────
+  const findResult = (query, list, batchList, batchSize) => {
+    const tokens = parseList(query, 0);
+    if (!tokens.length || !list.length) return null;
+    const idxMap = new Map();
+    list.forEach((n, i) => idxMap.set(n, i));
+    const size = Math.max(1, parseInt(batchSize, 10) || 50);
+    const rows = tokens.map((t) => {
+      const idx = idxMap.has(t) ? idxMap.get(t) : -1;
+      return {
+        token: t,
+        found: idx >= 0,
+        position: idx >= 0 ? idx + 1 : 0,
+        deret: idx >= 0 ? Math.floor(idx / size) + 1 : 0,
+      };
+    });
+    return rows;
+  };
+
+  const find4dRows = useMemo(
+    () => findResult(find4d, result4D, batches, perBatch),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [find4d, result4D, batches, perBatch]
+  );
+
+  const find3dRows = useMemo(
+    () => findResult(find3d, result3D, batches3D, perBatch3D),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [find3d, result3D, batches3D, perBatch3D]
+  );
 
   // ── Persist set ke localStorage + server ─────────────────────────
   const persistSets = useCallback((next, thisDeviceId) => {
@@ -461,6 +494,36 @@ export default function RekapManualPage() {
               </button>
             </div>
             <pre className={styles.terminalBody}>{result4D.join("*")}</pre>
+            <div className={styles.findRow}>
+              <input
+                type="text"
+                value={find4d}
+                onChange={(e) => setFind4d(e.target.value)}
+                placeholder="🔍 Temukan angka 4D (mis: 1745*2745 atau 1745 2745)"
+                className={styles.findInput}
+              />
+              {find4d.trim() && find4dRows && (
+                <span className={styles.findSummary}>
+                  {find4dRows.filter((r) => r.found).length}/{find4dRows.length} ditemukan
+                </span>
+              )}
+            </div>
+            {find4dRows && find4dRows.length > 0 && (
+              <div className={styles.findResults}>
+                {find4dRows.map((r, i) => (
+                  <div key={i} className={r.found ? styles.findHit : styles.findMiss}>
+                    <span className={styles.findToken}>{r.token}</span>
+                    {r.found ? (
+                      <span className={styles.findInfo}>
+                        ✓ ada · posisi <b>#{r.position}</b> · <b>DERET {r.deret}</b>
+                      </span>
+                    ) : (
+                      <span className={styles.findInfo}>✗ tidak ada di hasil</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* ── Panel 2: Pembagi (muncul hanya jika 4D > 400) ── */}
@@ -523,6 +586,37 @@ export default function RekapManualPage() {
               {result4D.length} 4D → <b>{result3D.length}</b> 3D unik (posisi 2-4)
             </div>
             <pre className={styles.terminalBody}>{result3D.join("*")}</pre>
+            <div className={styles.findRow}>
+              <input
+                type="text"
+                value={find3d}
+                onChange={(e) => setFind3d(e.target.value)}
+                placeholder="🔍 Temukan angka 3D (mis: 745*746 atau 745 746)"
+                className={styles.findInput}
+              />
+              {find3d.trim() && find3dRows && (
+                <span className={styles.findSummary}>
+                  {find3dRows.filter((r) => r.found).length}/{find3dRows.length} ditemukan
+                </span>
+              )}
+            </div>
+            {find3dRows && find3dRows.length > 0 && (
+              <div className={styles.findResults}>
+                {find3dRows.map((r, i) => (
+                  <div key={i} className={r.found ? styles.findHit : styles.findMiss}>
+                    <span className={styles.findToken}>{r.token}</span>
+                    {r.found ? (
+                      <span className={styles.findInfo}>
+                        ✓ ada · posisi <b>#{r.position}</b>
+                        {result3D.length > 400 ? <> · <b>DERET {r.deret}</b></> : null}
+                      </span>
+                    ) : (
+                      <span className={styles.findInfo}>✗ tidak ada di hasil</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* ── Panel 4: Pembagi 3D (muncul hanya jika 3D > 400) ── */}

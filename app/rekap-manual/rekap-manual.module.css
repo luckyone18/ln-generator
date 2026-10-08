@@ -527,6 +527,93 @@
   resize: vertical;
 }
 
+/* ── Temukan angka ── */
+.findRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.findInput {
+  flex: 1;
+  min-width: 220px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  color: #0f172a;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.findInput:focus {
+  border-color: #6366f1;
+  background: #ffffff;
+}
+
+.findSummary {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #4338ca;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.findResults {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.findHit,
+.findMiss {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.findHit {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+
+.findMiss {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.findToken {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 800;
+  color: #0f172a;
+  min-width: 56px;
+}
+
+.findInfo {
+  color: #475569;
+}
+
+.findHit .findInfo {
+  color: #047857;
+}
+
+.findMiss .findInfo {
+  color: #b91c1c;
+}
+
 @media (max-width: 720px) {
   .grid {
     grid-template-columns: 1fr;
