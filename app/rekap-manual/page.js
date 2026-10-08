@@ -28,6 +28,7 @@ export default function RekapManualPage() {
 
   // Opsi Pembagi & 3D
   const [perBatch, setPerBatch] = useState(50);
+  const [perBatch3D, setPerBatch3D] = useState(50);
 
   const lists = useMemo(
     () => ({
@@ -72,6 +73,15 @@ export default function RekapManualPage() {
     const conv = result4D.map((n) => n.padStart(4, "0").slice(-3));
     return [...new Set(conv)].sort();
   }, [result4D]);
+
+  // ── 4. Pembagi 3D: potong jadi deret N angka ──────────────────────
+  const batches3D = useMemo(() => {
+    if (!result3D.length) return [];
+    const size = Math.max(1, parseInt(perBatch3D, 10) || 50);
+    const out = [];
+    for (let i = 0; i < result3D.length; i += size) out.push(result3D.slice(i, i + size));
+    return out;
+  }, [result3D, perBatch3D]);
 
   const copyText = async (text, key) => {
     try {
@@ -228,8 +238,7 @@ export default function RekapManualPage() {
           </section>
           )}
 
-          {/* ── Panel 3: 3D Creator (muncul hanya jika 3D > 400) ── */}
-          {result3D.length > 400 && (
+          {/* ── Panel 3: 3D Creator (selalu muncul) ── */}
           <section className={styles.resultPanel}>
             <div className={styles.resultHead}>
               <h2>🔢 PEMBUAT 3D (POSISI 2-4)</h2>
@@ -241,6 +250,53 @@ export default function RekapManualPage() {
               {result4D.length} 4D → <b>{result3D.length}</b> 3D unik (posisi 2-4)
             </div>
             <pre className={styles.terminalBody}>{result3D.join("*")}</pre>
+          </section>
+
+          {/* ── Panel 4: Pembagi 3D (muncul hanya jika 3D > 400) ── */}
+          {result3D.length > 400 && (
+          <section className={styles.resultPanel}>
+            <div className={styles.resultHead}>
+              <h2>✂️ PEMBAGI 3D (PER DERET)</h2>
+              <label className={styles.selLabel}>
+                Angka per deret:
+                <input
+                  type="number"
+                  min={1}
+                  max={5000}
+                  value={perBatch3D}
+                  onChange={(e) => setPerBatch3D(e.target.value)}
+                  className={styles.sizeInput}
+                />
+              </label>
+              <button
+                type="button"
+                className={styles.btnCopy}
+                onClick={() =>
+                  copyText(batches3D.map((d, i) => `DERET ${i + 1}:\n${d.join("*")}`).join("\n\n"), "all3d")
+                }
+              >
+                {copiedKey === "all3d" ? "✓ TERSALIN SEMUA" : "📋 COPY SEMUA DERET"}
+              </button>
+            </div>
+            <div className={styles.hintText} style={{ marginBottom: "0.75rem" }}>
+              Total <b>{result3D.length}</b> 3D → <b>{batches3D.length}</b> deret × maks <b>{Math.max(1, parseInt(perBatch3D, 10) || 50)}</b> angka
+            </div>
+            {batches3D.map((d, i) => (
+              <div key={i} className={styles.deretCard}>
+                <div className={styles.deretHead}>
+                  <span className={styles.deretTitle}>DERET {i + 1}</span>
+                  <span className={styles.deretCount}>{d.length} angka</span>
+                  <button
+                    type="button"
+                    className={styles.btnCopyDeret}
+                    onClick={() => copyText(d.join("*"), `d3d${i}`)}
+                  >
+                    {copiedKey === `d3d${i}` ? "✓" : "📋 COPY"}
+                  </button>
+                </div>
+                <textarea readOnly value={d.join("*")} rows={Math.min(6, Math.max(2, Math.ceil(d.length / 25)))} className={styles.deretArea} />
+              </div>
+            ))}
           </section>
           )}
         </>
