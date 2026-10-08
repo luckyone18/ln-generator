@@ -5,8 +5,7 @@ import Link from "next/link";
 import styles from "./rekap-manual.module.css";
 
 // Parse daftar angka dari input bebas: pisah * spasi koma ; | newline.
-// Token yang panjangnya kelipatan pas dari len akan dipotong (mis. "123456" →
-// 12,34,56 utk len=2; "745746" → 745,746 utk len=3).
+// Token kelipatan pas dari len dipotong (mis. "123456" → 12,34,56 utk len=2).
 function parseList(raw, len) {
   const s = String(raw || "").trim();
   if (!s) return [];
@@ -25,7 +24,11 @@ function parseList(raw, len) {
 
 export default function RekapManualPage() {
   const [raw, setRaw] = useState({ front: "", back: "", mid: "", d3: "" });
-  const [copied, setCopied] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(null);
+
+  // Opsi Pembagi & 3D
+  const [perBatch, setPerBatch] = useState(50);
+  const [mode3D, setMode3D] = useState("belakang"); // depan | tengah | belakang
 
   const lists = useMemo(
     () => ({
@@ -39,71 +42,83 @@ export default function RekapManualPage() {
 
   const set = (k) => (e) => setRaw((p) => ({ ...p, [k]: e.target.value }));
 
+  // ── 1. Konvolusi + filter → hasil 4D ──────────────────────────────
   const result4D = useMemo(() => {
-    // Butuh minimal 1 depan & 1 belakang
     if (!lists.front.length || !lists.back.length) return [];
-
     const hit = [];
     for (const f of lists.front) {
       for (const b of lists.back) {
-        const code = (f + b); // 4-digit string
+        const code = f + b;
         if (code.length !== 4) continue;
-
-        // Filter AIT (pos 2-3 / C·K)
-        if (lists.mid.length) {
-          const ck = code.slice(1, 3);
-          if (!lists.mid.includes(ck)) continue;
-        }
-        // Filter AI3D (pos 2-4 / C·K·E)
-        if (lists.d3.length) {
-          const cke = code.slice(1, 4);
-          if (!lists.d3.includes(cke)) continue;
-        }
+        if (lists.mid.length && !lists.mid.includes(code.slice(1, 3))) continue; // pos 2-3
+        if (lists.d3.length && !lists.d3.includes(code.slice(1, 4))) continue; // pos 2-4
         hit.push(code);
       }
     }
-    // Hapus duplikat & urut numerik
     return [...new Set(hit)].sort((a, b) => Number(a) - Number(b));
   }, [lists]);
 
-  const copyOut = async () => {
+  // ── 2. Pembagi: potong jadi deret N angka ─────────────────────────
+  const batches = useMemo(() => {
+    if (!result4D.length) return [];
+    const size = Math.max(1, parseInt(perBatch, 10) || 50);
+    const out = [];
+    for (let i = 0; i < result4D.length; i += size) out.push(result4D.slice(i, i + size));
+    return out;
+  }, [result4D, perBatch]);
+
+  // ── 3. 3D creator: ambil 3 digit dari tiap 4D ─────────────────────
+  const result3D = useMemo(() => {
+    if (!result4D.length) return [];
+    const conv = result4D.map((n) => {
+      const s = n.padStart(4, "0");
+      if (mode3D === "depan") return s.slice(0, 3);
+      if (mode3D === "tengah") return s.slice(1, 4);
+      return s.slice(-3); // belakang
+    });
+    return [...new Set(conv)].sort();
+  }, [result4D, mode3D]);
+
+  const copyText = async (text, key) => {
     try {
-      await navigator.clipboard.writeText(result4D.join("*"));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
     } catch { /* noop */ }
   };
 
   const clearAll = () => {
     setRaw({ front: "", back: "", mid: "", d3: "" });
-    setCopied(false);
+    setCopiedKey(null);
   };
+
+  const needInput = !lists.front.length || !lists.back.length;
 
   return (
     <main className={styles.wrap}>
       <header className={styles.header}>
         <h1>🧮 REKAP MANUAL</h1>
-        <p>Konvolusi langsung dari angka TOP/CAD1/CAD2 — output 4D saja, filtered by 2D tengah & 3D</p>
+        <p>Konvolusi manual dari angka TOP/CAD1/CAD2 → output 4D, lalu bagi jadi deret &amp; buat 3D</p>
         <div className={styles.navRow}>
           <Link href="/" className={styles.navPill}>Generator LN</Link>
           <Link href="/scanner" className={styles.navPill}>Scanner Pro</Link>
-          <Link href="/pembagi" className={styles.navPill}>Pembagi Angka</Link>
           <Link href="/riwayat" className={styles.navPill}>Riwayat</Link>
         </div>
       </header>
 
+      {/* ── Input 4 kolom ── */}
       <section className={styles.inputPanel}>
         <div className={styles.grid}>
           <div className={styles.field}>
             <label className={styles.fieldLabel}>① 2D ANGKA DEPAN (TOP/CAD…)</label>
             <textarea
               value={raw.front}
-              onChange={(e) => set("front")(e)}
+              onChange={set("front")}
               placeholder="12*34*56 atau 12 34 56"
               rows={3}
               className={styles.inputArea}
             />
-            <span className={styles.hintText}>Tulis deretan angka 2D (TOP/CAD1/CAD2). Auto-pisah bila pakai * / spasi.</span>
+            <span className={styles.hintText}>Deretan angka 2D → sisi depan 4D.</span>
             <span className={styles.countChip}>{lists.front.length} angka</span>
           </div>
 
@@ -111,12 +126,12 @@ export default function RekapManualPage() {
             <label className={styles.fieldLabel}>② 2D ANGKA BELAKANG (TOP/CAD…)</label>
             <textarea
               value={raw.back}
-              onChange={(e) => set("back")(e)}
+              onChange={set("back")}
               placeholder="45*78"
               rows={3}
               className={styles.inputArea}
             />
-            <span className={styles.hintText}>Tulis deretan angka 2D (TOP/CAD1/CAD2).</span>
+            <span className={styles.hintText}>Deretan angka 2D → sisi belakang 4D.</span>
             <span className={styles.countChip}>{lists.back.length} angka</span>
           </div>
 
@@ -124,12 +139,12 @@ export default function RekapManualPage() {
             <label className={styles.fieldLabel}>③ 2D TENGAH FILTER (posisi 2-3)</label>
             <textarea
               value={raw.mid}
-              onChange={(e) => set("mid")(e)}
+              onChange={set("mid")}
               placeholder="74"
               rows={3}
               className={styles.inputArea}
             />
-            <span className={styles.hintText}>Filter keras: kode 4D harus punya posisi 2-3 = salah satu angka di sini. Kosongkan jika tidak dipakai.</span>
+            <span className={styles.hintText}>Filter keras: 4D harus punya posisi 2-3 = salah satu dari ini. Opsional.</span>
             <span className={styles.countChip}>{lists.mid.length} angka</span>
           </div>
 
@@ -137,12 +152,12 @@ export default function RekapManualPage() {
             <label className={styles.fieldLabel}>④ 3D FILTER (posisi 2-4)</label>
             <textarea
               value={raw.d3}
-              onChange={(e) => set("d3")(e)}
+              onChange={set("d3")}
               placeholder="745"
               rows={3}
               className={styles.inputArea}
             />
-            <span className={styles.hintText}>Filter keras: kode 4D harus punya posisi 2-4 = salah satu angka di sini. Kosongkan jika tidak dipakai.</span>
+            <span className={styles.hintText}>Filter keras: 4D harus punya posisi 2-4 = salah satu dari ini. Opsional.</span>
             <span className={styles.countChip}>{lists.d3.length} angka</span>
           </div>
         </div>
@@ -152,26 +167,93 @@ export default function RekapManualPage() {
             🗑 KOSONGKAN
           </button>
           <span className={styles.statChip}>4D Sah: <b>{result4D.length}</b></span>
-          {(!lists.front.length || !lists.back.length) && (
-            <span className={styles.statChipWarn}>Butuh minimal 1 angka 2D depan & 1 angka 2D belakang</span>
+          {needInput && (
+            <span className={styles.statChipWarn}>Butuh minimal 1 angka 2D depan &amp; 1 angka 2D belakang</span>
           )}
         </div>
       </section>
 
       {result4D.length > 0 && (
-        <section className={styles.resultPanel}>
-          <div className={styles.resultHead}>
-            <h2>📦 HASIL 4D (LOLOS FILTER)</h2>
-            <button type="button" className={styles.btnCopy} onClick={copyOut}>
-              {copied ? "✓ TERSALIN" : "📋 COPY"}
-            </button>
-          </div>
-          <pre
-            className={styles.terminalBody}
-          >
-{result4D.join("\n")}
-          </pre>
-        </section>
+        <>
+          {/* ── Panel 1: Hasil 4D ── */}
+          <section className={styles.resultPanel}>
+            <div className={styles.resultHead}>
+              <h2>📦 HASIL 4D (LOLOS FILTER)</h2>
+              <button type="button" className={styles.btnCopy} onClick={() => copyText(result4D.join("*"), "4d")}>
+                {copiedKey === "4d" ? "✓ TERSALIN" : "📋 COPY"}
+              </button>
+            </div>
+            <pre className={styles.terminalBody}>{result4D.join("*")}</pre>
+          </section>
+
+          {/* ── Panel 2: Pembagi ── */}
+          <section className={styles.resultPanel}>
+            <div className={styles.resultHead}>
+              <h2>✂️ PEMBAGI 4D (PER DERET)</h2>
+              <label className={styles.selLabel}>
+                Angka per deret:
+                <input
+                  type="number"
+                  min={1}
+                  max={5000}
+                  value={perBatch}
+                  onChange={(e) => setPerBatch(e.target.value)}
+                  className={styles.sizeInput}
+                />
+              </label>
+              <button
+                type="button"
+                className={styles.btnCopy}
+                onClick={() =>
+                  copyText(batches.map((d, i) => `DERET ${i + 1}:\n${d.join("*")}`).join("\n\n"), "all")
+                }
+              >
+                {copiedKey === "all" ? "✓ TERSALIN SEMUA" : "📋 COPY SEMUA DERET"}
+              </button>
+            </div>
+            <div className={styles.hintText} style={{ marginBottom: "0.75rem" }}>
+              Total <b>{result4D.length}</b> 4D → <b>{batches.length}</b> deret × maks <b>{Math.max(1, parseInt(perBatch, 10) || 50)}</b> angka
+            </div>
+            {batches.map((d, i) => (
+              <div key={i} className={styles.deretCard}>
+                <div className={styles.deretHead}>
+                  <span className={styles.deretTitle}>DERET {i + 1}</span>
+                  <span className={styles.deretCount}>{d.length} angka</span>
+                  <button
+                    type="button"
+                    className={styles.btnCopyDeret}
+                    onClick={() => copyText(d.join("*"), `d${i}`)}
+                  >
+                    {copiedKey === `d${i}` ? "✓" : "📋 COPY"}
+                  </button>
+                </div>
+                <textarea readOnly value={d.join("*")} rows={Math.min(6, Math.max(2, Math.ceil(d.length / 25)))} className={styles.deretArea} />
+              </div>
+            ))}
+          </section>
+
+          {/* ── Panel 3: 3D Creator ── */}
+          <section className={styles.resultPanel}>
+            <div className={styles.resultHead}>
+              <h2>🔢 PEMBUAT 3D (DARI 4D)</h2>
+              <label className={styles.selLabel}>
+                Ambil 3 digit:
+                <select value={mode3D} onChange={(e) => setMode3D(e.target.value)} className={styles.select}>
+                  <option value="belakang">BELAKANG (CE)</option>
+                  <option value="depan">DEPAN (AB)</option>
+                  <option value="tengah">TENGAH (BC)</option>
+                </select>
+              </label>
+              <button type="button" className={styles.btnCopy} onClick={() => copyText(result3D.join("*"), "3d")}>
+                {copiedKey === "3d" ? "✓ TERSALIN" : "📋 COPY"}
+              </button>
+            </div>
+            <div className={styles.hintText} style={{ marginBottom: "0.75rem" }}>
+              {result4D.length} 4D → <b>{result3D.length}</b> 3D unik ({mode3D})
+            </div>
+            <pre className={styles.terminalBody}>{result3D.join("*")}</pre>
+          </section>
+        </>
       )}
     </main>
   );
