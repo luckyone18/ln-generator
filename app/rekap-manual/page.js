@@ -49,6 +49,7 @@ export default function RekapManualPage() {
   const [claimCode, setClaimCode] = useState("");
   const [claimMsg, setClaimMsg] = useState("");
   const [saveMsg, setSaveMsg] = useState("");
+  const [showSets, setShowSets] = useState(false);
   const setsRef = useRef([]);
   const initRef = useRef(false);
 
@@ -311,6 +312,13 @@ export default function RekapManualPage() {
         </div>
 
         <div className={styles.saveRow}>
+          <button
+            type="button"
+            className={styles.btnToggleSets}
+            onClick={() => setShowSets((v) => !v)}
+          >
+            {showSets ? "🔽 SEMBUNYIKAN SET" : "📂 TAMPILKAN SET"} ({sets.length})
+          </button>
           <span className={styles.saveCount}>
             Tersimpan: <b>{sets.length}</b> set
             {syncCode ? <> · kode sync <b className={styles.codeText}>{syncCode}</b></> : null}
@@ -338,7 +346,7 @@ export default function RekapManualPage() {
         </div>
         {claimMsg && <div className={styles.claimMsg}>{claimMsg}</div>}
 
-        {sets.length > 0 && (
+        {showSets && sets.length > 0 && (
           <div className={styles.setsGrid}>
             {sets.map((s) => {
               const c =

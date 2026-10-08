@@ -139,6 +139,22 @@
   color: #4b5563;
 }
 
+.btnToggleSets {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnToggleSets:hover {
+  background: #e0e7ff;
+}
+
 .codeText {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   background: #eff6ff;
