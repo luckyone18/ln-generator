@@ -1253,6 +1253,7 @@ export default function ScannerPage() {
           <Link href="/rumus-otomatis" className={styles.navPill}>Rumus Otomatis</Link>
           <Link href="/scanner" className={styles.navPill}>️Scanner Pro</Link>
           <Link href="/pembagi" className={styles.navPill}>✂️ Pembagi Angka</Link>
+          <Link href="/rekap-manual" className={styles.navPill}>🧮 Rekap Manual</Link>
         </div>
       </header>
 

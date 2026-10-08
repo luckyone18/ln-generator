@@ -450,7 +450,7 @@ export function buildStats4D(impl) {
   return { TOTAL, tiers, positions };
 }
 
-export function renderRekap4D(impl, showTiers = "top") {
+export function renderRekap4D(impl, showTiers = "top", title = "Rekap 4D") {
   const L = [];
   const filt = []
     .concat(impl.ai3d.length ? [`${impl.ai3d.length} AI3D`] : [])
@@ -477,8 +477,8 @@ export function renderRekap4D(impl, showTiers = "top") {
     ? "AI3D + AIT (BOTH - harus lolos keduanya)" 
     : filt.join(" + ");
   const header = impl.useFilter
-    ? `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI + ${filterTag} (filter)`
-    : `Rekap 4D — ${impl.front.length} AID + ${impl.back.length} AI`;
+    ? `${title} — ${impl.front.length} AID + ${impl.back.length} AI + ${filterTag} (filter)`
+    : `${title} — ${impl.front.length} AID + ${impl.back.length} AI`;
   L.push(header, "");
 
   L.push("── 2D DEPAN (AID) ──");
