@@ -101,6 +101,8 @@ export default function BbfsPage() {
           <Link href="/uji-kinerja" className={styles.bbfsNavPill}>Uji Kinerja</Link>
           <Link href="/rumus-otomatis" className={styles.bbfsNavPill}>Rumus Otomatis</Link>
           <Link href="/scanner" className={styles.bbfsNavPill}>Scanner Pro</Link>
+          <Link href="/pembagi" className={styles.bbfsNavPill}>Pembagi Angka</Link>
+          <Link href="/rekap-manual" className={styles.bbfsNavPill}>Rekap Manual</Link>
         </div>
       </header>
 

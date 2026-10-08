@@ -322,7 +322,10 @@ export default function RekapManualPage() {
         <div className={styles.navRow}>
           <Link href="/" className={styles.navPill}>Generator LN</Link>
           <Link href="/scanner" className={styles.navPill}>Scanner Pro</Link>
+          <Link href="/pembagi" className={styles.navPill}>Pembagi Angka</Link>
           <Link href="/riwayat" className={styles.navPill}>Riwayat</Link>
+          <Link href="/uji-kinerja" className={styles.navPill}>Uji Kinerja</Link>
+          <Link href="/rumus-otomatis" className={styles.navPill}>Rumus Otomatis</Link>
         </div>
       </header>
 

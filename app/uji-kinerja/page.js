@@ -81,6 +81,14 @@ export default function UjiKinerjaPage() {
         <p className="subtitle">
           Backtest Kress Ai — seberapa sering digit kress muncul di result berikutnya
         </p>
+        <div className="navRow" style={{ flexWrap: "wrap", justifyContent: "center" }}>
+          <Link href="/" className="btn btnBlue">Generator LN</Link>
+          <Link href="/riwayat" className="btn btnBlue">Riwayat</Link>
+          <Link href="/rumus-otomatis" className="btn btnBlue">Rumus Otomatis</Link>
+          <Link href="/scanner" className="btn btnBlue">Scanner Pro</Link>
+          <Link href="/pembagi" className="btn btnBlue">Pembagi Angka</Link>
+          <Link href="/rekap-manual" className="btn btnBlue">Rekap Manual</Link>
+        </div>
       </section>
 
       <section className="inputCard">

@@ -115,6 +115,7 @@ export default function PembagiPage() {
           <Link href="/uji-kinerja" className={styles.navPill}>Uji Kinerja</Link>
           <Link href="/rumus-otomatis" className={styles.navPill}>Rumus Otomatis</Link>
           <Link href="/scanner" className={styles.navPill}>Scanner Pro</Link>
+          <Link href="/rekap-manual" className={styles.navPill}>Rekap Manual</Link>
         </div>
       </header>
 

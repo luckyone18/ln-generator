@@ -353,6 +353,9 @@ export default function Page() {
           <Link href="/scanner" className="btn btnBlue">
             SCANNER PRO
           </Link>
+          <Link href="/pembagi" className="btn btnBlue">
+            PEMBAGI ANGKA
+          </Link>
           <Link href="/rekap-manual" className="btn btnBlue">
             REKAP MANUAL
           </Link>

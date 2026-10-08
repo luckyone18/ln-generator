@@ -405,6 +405,9 @@ export default function RumusOtomatisPage() {
           <Link href="/pembagi" className="btn btnBlue">
             PEMBAGI ANGKA
           </Link>
+          <Link href="/rekap-manual" className="btn btnBlue">
+            REKAP MANUAL
+          </Link>
         </div>
       </header>
 

@@ -238,6 +238,12 @@ export default function RiwayatPage() {
         <Link href="/scanner" className="btn">
           Scanner Pro
         </Link>
+        <Link href="/pembagi" className="btn">
+          Pembagi Angka
+        </Link>
+        <Link href="/rekap-manual" className="btn">
+          Rekap Manual
+        </Link>
       </div>
     </main>
   );
