@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import styles from "./rekap-manual.module.css";
+
+const LS_SETS = "ln_rm_sets";
+const LS_DEVICE = "ln_rm_device";
 
 // Parse daftar angka dari input bebas: pisah * spasi koma ; | newline.
 // Token kelipatan pas dari len dipotong (mis. "123456" → 12,34,56 utk len=2).
@@ -22,6 +25,13 @@ function parseList(raw, len) {
   return out;
 }
 
+function genId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return "rm-" + crypto.randomUUID().replace(/-/g, "").slice(0, 14);
+  }
+  return "rm-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
 export default function RekapManualPage() {
   const [raw, setRaw] = useState({ front: "", back: "", mid: "", d3: "" });
   const [copiedKey, setCopiedKey] = useState(null);
@@ -29,6 +39,18 @@ export default function RekapManualPage() {
   // Opsi Pembagi & 3D
   const [perBatch, setPerBatch] = useState(50);
   const [perBatch3D, setPerBatch3D] = useState(50);
+
+  // ── Mode simpan (set angka) ──────────────────────────────────────
+  const [sets, setSets] = useState([]);
+  const [setName, setSetName] = useState("");
+  const [deviceId, setDeviceId] = useState("");
+  const [syncCode, setSyncCode] = useState("");
+  const [syncState, setSyncState] = useState("idle"); // idle|syncing|saved|error
+  const [claimCode, setClaimCode] = useState("");
+  const [claimMsg, setClaimMsg] = useState("");
+  const [saveMsg, setSaveMsg] = useState("");
+  const setsRef = useRef([]);
+  const initRef = useRef(false);
 
   const lists = useMemo(
     () => ({
@@ -83,6 +105,160 @@ export default function RekapManualPage() {
     return out;
   }, [result3D, perBatch3D]);
 
+  // ── Persist set ke localStorage + server ─────────────────────────
+  const persistSets = useCallback((next, thisDeviceId) => {
+    setsRef.current = next;
+    setSets(next);
+    try {
+      localStorage.setItem(LS_SETS, JSON.stringify(next));
+    } catch { /* noop */ }
+    if (!thisDeviceId) return;
+    setSyncState("syncing");
+    fetch("/api/rekap-manual", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId: thisDeviceId, sets: next }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && d.ok) {
+          setSyncState("saved");
+          if (d.syncCode) setSyncCode(d.syncCode);
+        } else {
+          setSyncState("error");
+        }
+      })
+      .catch(() => setSyncState("error"));
+  }, []);
+
+  // ── Restore saat load: localStorage dulu (instan), lalu server ────
+  useEffect(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem(LS_SETS) || "[]");
+      if (Array.isArray(local) && local.length) {
+        setsRef.current = local;
+        setSets(local);
+      }
+    } catch { /* noop */ }
+
+    let did = "";
+    try {
+      did = localStorage.getItem(LS_DEVICE) || "";
+      if (!did) {
+        did =
+          (crypto.randomUUID && crypto.randomUUID().replace(/-/g, "").slice(0, 24)) ||
+          ("d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+        localStorage.setItem(LS_DEVICE, did);
+      }
+    } catch {
+      did = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    }
+    setDeviceId(did);
+
+    fetch(`/api/rekap-manual?deviceId=${encodeURIComponent(did)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (initRef.current) return;
+        initRef.current = true;
+        if (d && d.syncCode) setSyncCode(d.syncCode);
+        if (d && Array.isArray(d.sets)) {
+          const serverCount = d.sets.length;
+          const localCount = (() => {
+            try { return JSON.parse(localStorage.getItem(LS_SETS) || "[]").length; } catch { return 0; }
+          })();
+          if (serverCount > localCount) {
+            setsRef.current = d.sets;
+            setSets(d.sets);
+            try { localStorage.setItem(LS_SETS, JSON.stringify(d.sets)); } catch { /* noop */ }
+          } else if (serverCount < localCount) {
+            persistSets(setsRef.current, did);
+          }
+        }
+      })
+      .catch(() => { /* noop */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Simpan set input saat ini ────────────────────────────────────
+  const saveCurrentSet = () => {
+    const name = (setName || "").trim();
+    if (!name) {
+      setSaveMsg("⚠️ Isi nama set dulu.");
+      setTimeout(() => setSaveMsg(""), 2500);
+      return;
+    }
+    if (!raw.front.trim() && !raw.back.trim() && !raw.mid.trim() && !raw.d3.trim()) {
+      setSaveMsg("⚠️ Tidak ada angka untuk disimpan.");
+      setTimeout(() => setSaveMsg(""), 2500);
+      return;
+    }
+    const entry = {
+      id: genId(),
+      name,
+      front: raw.front,
+      back: raw.back,
+      mid: raw.mid,
+      d3: raw.d3,
+      savedAt: Date.now(),
+    };
+    persistSets([...setsRef.current, entry], deviceId);
+    setSetName("");
+    setSaveMsg("✓ Tersimpan");
+    setTimeout(() => setSaveMsg(""), 2500);
+  };
+
+  // ── Muat set ke input ────────────────────────────────────────────
+  const loadSet = (s) => {
+    setRaw({ front: s.front || "", back: s.back || "", mid: s.mid || "", d3: s.d3 || "" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const deleteSet = (id) => {
+    persistSets(setsRef.current.filter((s) => s.id !== id), deviceId);
+  };
+
+  const renameSet = (id) => {
+    const cur = setsRef.current.find((s) => s.id === id);
+    if (!cur) return;
+    const name = window.prompt("Nama baru untuk set ini:", cur.name);
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    persistSets(
+      setsRef.current.map((s) => (s.id === id ? { ...s, name: trimmed.slice(0, 80) } : s)),
+      deviceId
+    );
+  };
+
+  // ── Claim set dari device lain via kode sync ─────────────────────
+  const doClaim = async () => {
+    const code = claimCode.trim().toUpperCase();
+    setClaimMsg("");
+    if (!/^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(code)) {
+      setClaimMsg("Format kode: XXXX-XXXX (tanpa I/O/0/1)");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/rekap-manual?code=${encodeURIComponent(code)}`);
+      const data = await res.json();
+      if (!res.ok || !data || !Array.isArray(data.sets)) {
+        setClaimMsg(data?.error || "Kode sync tidak ditemukan.");
+        return;
+      }
+      // merge: hindari duplikat id
+      const exist = new Set(setsRef.current.map((s) => s.id));
+      const merged = [...setsRef.current];
+      data.sets.forEach((s) => {
+        if (!exist.has(s.id)) merged.push(s);
+      });
+      persistSets(merged, deviceId);
+      setClaimMsg(`✓ ${data.sets.length} set dimuat (${merged.length} total).`);
+      setClaimCode("");
+    } catch {
+      setClaimMsg("Gagal menghubungi server.");
+    }
+  };
+
   const copyText = async (text, key) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -98,6 +274,12 @@ export default function RekapManualPage() {
 
   const needInput = !lists.front.length || !lists.back.length;
 
+  const syncBadge =
+    syncState === "syncing" ? "⏳ sync…"
+    : syncState === "saved" ? "☁️ tersimpan"
+    : syncState === "error" ? "⚠️ offline (tersimpan lokal)"
+    : "💾 lokal";
+
   return (
     <main className={styles.wrap}>
       <header className={styles.header}>
@@ -109,6 +291,89 @@ export default function RekapManualPage() {
           <Link href="/riwayat" className={styles.navPill}>Riwayat</Link>
         </div>
       </header>
+
+      {/* ── Bar simpan / muat set ── */}
+      <section className={styles.savePanel}>
+        <div className={styles.saveRow}>
+          <input
+            type="text"
+            value={setName}
+            onChange={(e) => setSetName(e.target.value)}
+            placeholder="Nama set (mis: SGP 04-10)"
+            className={styles.saveNameInput}
+            onKeyDown={(e) => { if (e.key === "Enter") saveCurrentSet(); }}
+          />
+          <button type="button" className={styles.btnSave} onClick={saveCurrentSet}>
+            💾 SIMPAN SET
+          </button>
+          <span className={styles.syncBadge}>{syncBadge}</span>
+          {saveMsg && <span className={styles.saveMsg}>{saveMsg}</span>}
+        </div>
+
+        <div className={styles.saveRow}>
+          <span className={styles.saveCount}>
+            Tersimpan: <b>{sets.length}</b> set
+            {syncCode ? <> · kode sync <b className={styles.codeText}>{syncCode}</b></> : null}
+          </span>
+          {syncCode && (
+            <button
+              type="button"
+              className={styles.btnMini}
+              onClick={() => copyText(syncCode, "sync")}
+            >
+              {copiedKey === "sync" ? "✓" : "📋 kode"}
+            </button>
+          )}
+          <input
+            type="text"
+            value={claimCode}
+            onChange={(e) => setClaimCode(e.target.value)}
+            placeholder="XXXX-XXXX (pindah device)"
+            className={styles.claimInput}
+            onKeyDown={(e) => { if (e.key === "Enter") doClaim(); }}
+          />
+          <button type="button" className={styles.btnMini} onClick={doClaim}>
+            ⬇️ AMBIL
+          </button>
+        </div>
+        {claimMsg && <div className={styles.claimMsg}>{claimMsg}</div>}
+
+        {sets.length > 0 && (
+          <div className={styles.setsGrid}>
+            {sets.map((s) => {
+              const c =
+                (parseList(s.front, 2).length) + "/" +
+                (parseList(s.back, 2).length);
+              return (
+                <div key={s.id} className={styles.setCard}>
+                  <div className={styles.setCardHead}>
+                    <span className={styles.setCardName} title={s.name}>{s.name}</span>
+                    <span className={styles.setCardMeta}>D/B: {c}</span>
+                  </div>
+                  <div className={styles.setCardBody}>
+                    <span>D: {s.front || "-"}</span>
+                    <span>B: {s.back || "-"}</span>
+                    {(s.mid || s.d3) && (
+                      <span>T: {s.mid || "-"} · 3D: {s.d3 || "-"}</span>
+                    )}
+                  </div>
+                  <div className={styles.setCardActions}>
+                    <button type="button" className={styles.btnMiniPrimary} onClick={() => loadSet(s)}>
+                      ⬆️ MUAT
+                    </button>
+                    <button type="button" className={styles.btnMini} onClick={() => renameSet(s.id)}>
+                      ✏️
+                    </button>
+                    <button type="button" className={styles.btnMiniDanger} onClick={() => deleteSet(s.id)}>
+                      🗑
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* ── Input 4 kolom ── */}
       <section className={styles.inputPanel}>
