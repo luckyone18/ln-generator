@@ -37,8 +37,8 @@ export default function RekapManualPage() {
   const [copiedKey, setCopiedKey] = useState(null);
 
   // Opsi Pembagi & 3D
-  const [perBatch, setPerBatch] = useState(50);
-  const [perBatch3D, setPerBatch3D] = useState(50);
+  const [perBatch, setPerBatch] = useState(400);
+  const [perBatch3D, setPerBatch3D] = useState(400);
 
   // ── Mode simpan (set angka) ──────────────────────────────────────
   const [sets, setSets] = useState([]);
@@ -86,7 +86,7 @@ export default function RekapManualPage() {
   // ── 2. Pembagi: potong jadi deret N angka ─────────────────────────
   const batches = useMemo(() => {
     if (!result4D.length) return [];
-    const size = Math.max(1, parseInt(perBatch, 10) || 50);
+    const size = Math.max(1, parseInt(perBatch, 10) || 400);
     const out = [];
     for (let i = 0; i < result4D.length; i += size) out.push(result4D.slice(i, i + size));
     return out;
@@ -102,7 +102,7 @@ export default function RekapManualPage() {
   // ── 4. Pembagi 3D: potong jadi deret N angka ──────────────────────
   const batches3D = useMemo(() => {
     if (!result3D.length) return [];
-    const size = Math.max(1, parseInt(perBatch3D, 10) || 50);
+    const size = Math.max(1, parseInt(perBatch3D, 10) || 400);
     const out = [];
     for (let i = 0; i < result3D.length; i += size) out.push(result3D.slice(i, i + size));
     return out;
@@ -114,7 +114,7 @@ export default function RekapManualPage() {
     if (!tokens.length || !list.length) return null;
     const idxMap = new Map();
     list.forEach((n, i) => idxMap.set(n, i));
-    const size = Math.max(1, parseInt(batchSize, 10) || 50);
+    const size = Math.max(1, parseInt(batchSize, 10) || 400);
     const rows = tokens.map((t) => {
       const idx = idxMap.has(t) ? idxMap.get(t) : -1;
       return {
@@ -556,7 +556,7 @@ export default function RekapManualPage() {
               </button>
             </div>
             <div className={styles.hintText} style={{ marginBottom: "0.75rem" }}>
-              Total <b>{result4D.length}</b> 4D → <b>{batches.length}</b> deret × maks <b>{Math.max(1, parseInt(perBatch, 10) || 50)}</b> angka
+              Total <b>{result4D.length}</b> 4D → <b>{batches.length}</b> deret × maks <b>{Math.max(1, parseInt(perBatch, 10) || 400)}</b> angka
             </div>
             {batches.map((d, i) => (
               <div key={i} className={styles.deretCard}>
@@ -649,7 +649,7 @@ export default function RekapManualPage() {
               </button>
             </div>
             <div className={styles.hintText} style={{ marginBottom: "0.75rem" }}>
-              Total <b>{result3D.length}</b> 3D → <b>{batches3D.length}</b> deret × maks <b>{Math.max(1, parseInt(perBatch3D, 10) || 50)}</b> angka
+              Total <b>{result3D.length}</b> 3D → <b>{batches3D.length}</b> deret × maks <b>{Math.max(1, parseInt(perBatch3D, 10) || 400)}</b> angka
             </div>
             {batches3D.map((d, i) => (
               <div key={i} className={styles.deretCard}>
