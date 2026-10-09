@@ -225,6 +225,37 @@
   background: #ffffff;
 }
 
+.setsHint {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+/* Tampilkan ~3 baris (9 kartu); sisanya scroll. */
+.setsScroll {
+  max-height: 24rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.35rem;
+  border-radius: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.setsScroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.setsScroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.setsScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .setsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
