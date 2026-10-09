@@ -250,6 +250,11 @@
   font-size: 0.88rem;
   font-weight: 800;
   color: #374151;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .setCardMeta {
@@ -258,13 +263,30 @@
   background: #e2e8f0;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
+  flex: 0 0 auto;
+  margin-left: 0.5rem;
 }
 
 .setCardBody {
-  font-size: 0.78rem;
-  color: #4b5563;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   margin-bottom: 0.6rem;
-  line-height: 1.5;
+}
+
+.setChip {
+  font-size: 0.72rem;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.15rem 0.45rem;
+  white-space: nowrap;
+}
+
+.setChip b {
+  color: #0d9488;
+  font-weight: 800;
 }
 
 .setCardActions {

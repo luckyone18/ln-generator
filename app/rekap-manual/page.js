@@ -385,21 +385,22 @@ export default function RekapManualPage() {
         {showSets && sets.length > 0 && (
           <div className={styles.setsGrid}>
             {sets.map((s) => {
-              const c =
-                (parseList(s.front, 2).length) + "/" +
-                (parseList(s.back, 2).length);
+              const nFront = parseList(s.front, 2).length;
+              const nBack = parseList(s.back, 2).length;
+              const nMid = parseList(s.mid, 2).length;
+              const nD3 = parseList(s.d3, 3).length;
+              const total = nFront + nBack + nMid + nD3;
               return (
                 <div key={s.id} className={styles.setCard}>
                   <div className={styles.setCardHead}>
                     <span className={styles.setCardName} title={s.name}>{s.name}</span>
-                    <span className={styles.setCardMeta}>D/B: {c}</span>
+                    <span className={styles.setCardMeta}>{total} angka</span>
                   </div>
                   <div className={styles.setCardBody}>
-                    <span>D: {s.front || "-"}</span>
-                    <span>B: {s.back || "-"}</span>
-                    {(s.mid || s.d3) && (
-                      <span>T: {s.mid || "-"} · 3D: {s.d3 || "-"}</span>
-                    )}
+                    <span className={styles.setChip}>① Depan <b>{nFront}</b></span>
+                    <span className={styles.setChip}>② Belakang <b>{nBack}</b></span>
+                    {nMid > 0 && <span className={styles.setChip}>③ Tengah <b>{nMid}</b></span>}
+                    {nD3 > 0 && <span className={styles.setChip}>④ 3D <b>{nD3}</b></span>}
                   </div>
                   <div className={styles.setCardActions}>
                     <button type="button" className={styles.btnMiniPrimary} onClick={() => loadSet(s)}>
