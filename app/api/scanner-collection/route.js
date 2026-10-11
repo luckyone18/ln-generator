@@ -6,8 +6,8 @@ const SYNC_CODE_LENGTH = 8;
 const BLOB_PREFIX = "ln/scanner-collection/";
 const DEVICE_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 const SYNC_CODE_RE = /^[A-Z2-9]{4}-[A-Z2-9]{4}$/;
-const MAX_ITEMS = 500;
-const MAX_ITEMS_BYTES = 512000;
+const MAX_ITEMS = 3000;
+const MAX_ITEMS_BYTES = 4194304; // 4 MB (dari 512 KB) — cukup untuk ~700–800 rumus dengan trek_log penuh
 
 function generateSyncCode() {
   const chars = [];
@@ -119,7 +119,7 @@ export async function POST(req) {
     );
   }
 
-  if (JSON.stringify(items).length > MAX_ITEMS_BYTES) {
+  if (Buffer.byteLength(JSON.stringify(items), "utf8") > MAX_ITEMS_BYTES) {
     return Response.json(
       { error: "Koleksi terlalu besar" },
       { status: 400 }
