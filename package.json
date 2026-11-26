@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node scripts/test-algorithm.mjs && node scripts/test-wla.mjs"
+    "test": "node scripts/test-algorithm.mjs && node scripts/test-wla.mjs && node scripts/test-settings-probe.mjs"
   },
   "dependencies": {
     "next": "16.3.4",

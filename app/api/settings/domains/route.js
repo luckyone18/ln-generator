@@ -47,12 +47,24 @@ export async function POST(req) {
   }
   try {
     const saved = await setSeedDomains(raw);
-    // probe discovery sekali dgn seed baru → langsung ketahuan kalau URL-nya mati
+    // Probe ringan ke API scanner publik; jangan memakai filter_api lama yang
+    // masih membutuhkan nonce WordPress.
     let probe = null;
     try {
-      const { wlaFilterApi } = await import("../../../lib/wla.js");
-      const res = await wlaFilterApi({ action: "probe" });
-      probe = { ok: true, note: `filter_api merespons (${String(res?.status ?? "ok").slice(0, 20)})` };
+      const { wlaScannerApi } = await import("../../../lib/wla.js");
+      const res = await wlaScannerApi({
+        market: "sgp",
+        fCol: "ai",
+        limit: 1,
+        patahMax: 0,
+        targetDMax: 0,
+        maxTime: 1,
+        maxResults: 1,
+        daysFilter: [],
+        is_first: true,
+      });
+      if (res?.status !== "success") throw new Error("scanner_api response invalid");
+      probe = { ok: true, note: "scanner_api merespons (success)" };
     } catch (err) {
       probe = { ok: false, error: String(err?.message || err).slice(0, 160) };
     }
