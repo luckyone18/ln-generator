@@ -25,9 +25,11 @@ Masukkan result 4D → dapatkan:
 ## Test
 
 ```bash
-node scripts/test-algorithm.mjs
+npm test
 npm run build
 ```
+
+`npm test` menjalankan tes algoritma dan regresi proxy scanner Angkanet.
 
 ## Deploy
 

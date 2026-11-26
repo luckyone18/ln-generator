@@ -1,14 +1,11 @@
-// WLA (Angkanet) proxy helper — tahan rotasi domain + nonce expired.
+// WLA (Angkanet) proxy helper — tahan rotasi domain.
 //
-// Situs angkanet rutin ganti domain (angkanet26 → ...29). Domain lama menjawab
-// 301 ke domain baru. Nonce WP juga kadaluarsa. Helper ini:
-//   1. Coba domain terakhir yang diketahui (cache modul).
-//   2. Fetch halaman rumus-otomatis, ikuti redirect, ambil domain final dari res.url,
-//      ekstrak 2 nonce (nonce umum utk filter_api, WLA_CONFIG nonce utk scanner_api).
-//   3. Saat 403 → refresh discovery sekali, lalu retry request.
+// Discovery mengikuti redirect domain dan menyimpan domain final. Nonce WordPress
+// bersifat opsional dan hanya diwajibkan oleh filter_api lama. Scanner utama
+// memakai API JSON publik `/api/scanner`, sehingga halaman tanpa nonce tidak lagi
+// menggagalkan scan. Saat 403, discovery di-refresh sekali lalu request diulang.
 //
-// Cache: 10 menit (nonce fresh ~12 jam di WP). Scope modul — warm antar-request
-// di instance serverless yang sama.
+// Cache: 10 menit. Scope modul — warm antar-request di instance serverless yang sama.
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -87,11 +84,10 @@ async function discover() {
           // WLA_CONFIG nonce (scanner_api): blok WLA_CONFIG
           const n2 = html.match(/WLA_CONFIG=\{[^}]*"nonce":"([a-f0-9]{8,12})"/);
 
-          if (!n1) throw new Error("no nonce found");
           cache = {
             domain,
-            filterNonce: n1[1],
-            scannerNonce: (n2 && n2[1]) || n1[1],
+            filterNonce: n1 ? n1[1] : null,
+            scannerNonce: n2 ? n2[1] : n1 ? n1[1] : null,
             at: Date.now(),
           };
           return;
@@ -116,6 +112,7 @@ function invalidate() {
 export async function wlaFilterApi(body) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     const { domain, filterNonce } = await discover();
+    if (!filterNonce) throw new Error("no nonce found");
     try {
       const res = await fetch(
         `https://${domain}/wp-admin/admin-ajax.php?action=wla_app_api&hub_action=filter_api&_wpnonce=${filterNonce}&ajax=1`,
@@ -146,36 +143,21 @@ export async function wlaFilterApi(body) {
   throw new Error("WLA filter_api unreachable");
 }
 
-// POST form ke scanner_api (scanner utama).
-export async function wlaScannerApi(formFields) {
-  const formData = new URLSearchParams();
-  formData.append("action", "wla_app_api");
-  formData.append("hub_action", "scanner_api");
-  formData.append("ajax", "1");
-  for (const [k, v] of Object.entries(formFields)) {
-    if (v === undefined || v === null) continue;
-    if (Array.isArray(v)) {
-      // days[] per elemen (format form WP)
-      v.forEach((item) => formData.append(`${k}[]`, String(item)));
-    } else {
-      formData.append(k, String(v));
-    }
-  }
-
+// POST JSON ke API scanner publik (tidak lagi memerlukan nonce WordPress).
+export async function wlaScannerApi(fields) {
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const { domain, scannerNonce } = await discover();
-    formData.set("nonce", scannerNonce);
+    const { domain } = await discover();
     try {
-      const res = await fetch(`https://${domain}/wp-admin/admin-ajax.php`, {
+      const res = await fetch(`https://${domain}/api/scanner`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
+          Accept: "application/json",
           "User-Agent": UA,
           Origin: `https://${domain}`,
           Referer: `https://${domain}/scanner-angkanet-pro/`,
-          "X-Requested-With": "XMLHttpRequest",
         },
-        body: formData.toString(),
+        body: JSON.stringify(fields),
         signal: AbortSignal.timeout(20000),
       });
       if (res.status === 403) {
